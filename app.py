@@ -16,7 +16,7 @@ def carregar_dados(caminho_arquivo):
     return df_spn, df_iti
 
 # Caminho para o arquivo Excel consolidado
-caminho_arquivo = r'C:\Users\franciscoj\Python_Initial\Pyhton_Web\Base\consolidado.xlsx'
+caminho_arquivo = 'Base/consolidado.xlsx'  # Usando caminho relativo
 
 # Carrega as abas SPN e ITI
 df_spn, df_iti = carregar_dados(caminho_arquivo)
