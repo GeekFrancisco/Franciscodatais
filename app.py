@@ -16,7 +16,7 @@ def carregar_dados(caminho_arquivo):
     return df_spn, df_iti
 
 # Caminho para o arquivo Excel consolidado
-caminho_arquivo = 'Base/consolidado.xlsx'  # Usando caminho relativo
+caminho_arquivo = r'C:\Users\franciscoj\Python_Initial\Pyhton_Web\Base\consolidado.xlsx'
 
 # Carrega as abas SPN e ITI
 df_spn, df_iti = carregar_dados(caminho_arquivo)
@@ -109,14 +109,14 @@ if not df_filtrado.empty:
 
     st.plotly_chart(fig_incidentes, use_container_width=True)
 
-# Gráfico de Linha para Status concluído, não concluído e total
+# Gráfico de Área para Status concluído, não concluído e total
 st.subheader("Distribuição de Incidentes por Mês/Ano e Status")
 
-# Preparar os dados para o gráfico de linha por mês/ano e status
+# Preparar os dados para o gráfico de área por mês/ano e status
 if 'Backlog' in df_filtrado.columns:
     # Converter coluna 'Backlog' para o tipo datetime, se possível
     df_filtrado['Backlog'] = pd.to_datetime(df_filtrado['Backlog'], errors='coerce')
-    
+
     # Filtra e agrega por Backlog e Status
     backlog_por_status = (
         df_filtrado.groupby(['Backlog', 'Status'])
@@ -134,74 +134,71 @@ if 'Backlog' in df_filtrado.columns:
         if col not in backlog_por_status.columns:
             backlog_por_status[col] = 0  # Adiciona a coluna com valores zerados se não existir
 
-    # Cores personalizadas para as linhas
-    colors = ['blue', 'red', 'green']  # Cores para 'Concluido', 'Não' e 'Total'
+    # Cores personalizadas para as áreas
+    colors = ['blue', 'red', 'green']  # Cores para 'Resolvido', 'Pendente' e 'Total'
     
-    # Gráfico de linha mostrando concluído, não concluído e total
-    fig_backlog_status = px.line(
-        backlog_por_status,
-        x='Backlog',
-        y=['Resolvido', 'Pendente', 'Total'],
-        labels={'Backlog': 'Mês/Ano', 'value': 'Contagem', 'variable': 'Status'},
-        title="Distribuição de Incidentes por Status",
-        markers=True,
-        color_discrete_sequence=colors  # Aplicando as cores
+    # Gráfico de Barras Empilhadas para Status concluído, não concluído e total
+st.subheader("Distribuição de Incidentes por Mês/Ano e Status")
+
+# Preparar os dados para o gráfico de barras empilhadas por mês/ano e status
+if 'Backlog' in df_filtrado.columns:
+    # Converter coluna 'Backlog' para o tipo datetime, se possível
+    df_filtrado['Backlog'] = pd.to_datetime(df_filtrado['Backlog'], errors='coerce')
+
+    # Filtra e agrega por Backlog e Status
+    backlog_por_status = (
+        df_filtrado.groupby(['Backlog', 'Status'])
+        .size()
+        .unstack(fill_value=0)
+        .reset_index()
     )
 
-    # Adicionando rótulos de dados
-    for col in ['Resolvido', 'Pendente','Total']:
-        # Criar um Scatter separado para os rótulos de dados
-        fig_backlog_status.add_trace(
-            go.Scatter(
-                x=backlog_por_status['Backlog'],
-                y=backlog_por_status[col],
-                mode='markers+text',  # Apenas marcadores e texto
-                name=col,  # Nome para a legenda
-                text=backlog_por_status[col].astype(str),  # Rótulos de dados
-                textposition='top center',  # Posição do rótulo
-                marker=dict(size=8),  # Tamanho dos marcadores
-                showlegend=False  # Não mostrar na legenda
-            )
-        )
+    # Adicionar coluna "Total" para somar todos os status
+    backlog_por_status['Total'] = backlog_por_status.sum(axis=1, numeric_only=True)
 
+    # Verifica se as colunas esperadas estão presentes no DataFrame
+    status_columns = ['Resolvido', 'Pendente', 'Total']
+    for col in status_columns:
+        if col not in backlog_por_status.columns:
+            backlog_por_status[col] = 0  # Adiciona a coluna com valores zerados se não existir
+
+    # Cores personalizadas para as barras
+    colors = ['blue', 'red', 'green']  # Cores para 'Resolvido', 'Pendente' e 'Total'
+
+    # Gráfico de barras empilhadas mostrando concluído, não concluído e total
+    fig_backlog_status = px.bar(
+        backlog_por_status,
+        x='Backlog',
+        y=['Resolvido', 'Pendente'],
+        labels={'Backlog': 'Mês/Ano', 'value': 'Contagem', 'variable': 'Status'},
+        title="Distribuição de Incidentes por Status",
+        text_auto=True,  # Adiciona os rótulos de texto automaticamente
+        color_discrete_sequence=colors,  # Aplicando as cores
+        height=400  # Altura do gráfico
+    )
+
+    # Atualizar layout para adicionar a série Total no topo
+    fig_backlog_status.add_trace(
+        go.Bar(
+            x=backlog_por_status['Backlog'],
+            y=backlog_por_status['Total'],
+            name='Total',
+            marker_color='lightgrey',  # Cor para a barra total
+            text=backlog_por_status['Total'].astype(str),  # Rótulos de dados
+            textposition='outside'  # Posição do rótulo
+        )
+    )
+
+    # Atualizando layout
     fig_backlog_status.update_layout(
         xaxis_title="Mês/Ano",
         yaxis_title="Contagem",
+        barmode='stack',  # Empilhar as barras
         showlegend=True  # Habilita a legenda
     )
-    
+
     st.plotly_chart(fig_backlog_status, use_container_width=True)
 
-
-# Gráfico de Pizza: Distribuição Backlog Responsáveis
-st.subheader("Distribuição Backlog Responsáveis")
-
-if 'Responsavel' in df_filtrado.columns:
-    df_status = df_filtrado['Responsavel'].value_counts()
-
-    # Calcular porcentagens
-    total = df_status.sum()
-    percentages = df_status / total * 100
-
-    # Agrupar valores menores que 5% em 'Outros' se houver
-    df_status_grouped = df_status[percentages >= 5]
-    other_count = df_status[percentages < 5].sum()
-
-    # Adicionar 'Outros' apenas se houver valores menores que 5%
-    if other_count > 0:
-        df_status_grouped['Outros'] = other_count
-
-    # Verificar se existem valores para plotar
-    if not df_status_grouped.empty:
-        # Gráfico de pizza
-        fig_responsaveis = px.pie(
-            df_status_grouped,
-            names=df_status_grouped.index,
-            values=df_status_grouped.values,
-            title='Distribuição Backlog por Responsáveis',
-            hole=0.3
-        )
-        st.plotly_chart(fig_responsaveis, use_container_width=True)
 
 # Gráfico 4: Desempenho dos Responsáveis
 st.subheader("Desempenho dos Responsáveis")
