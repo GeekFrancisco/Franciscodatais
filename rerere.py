@@ -63,4 +63,8 @@ with pd.ExcelWriter(r'C:\Users\franciscoj\Python_Initial\Pyhton_Web\Base\consoli
     df_spn_consolidado.to_excel(writer, sheet_name='SPN', index=False)
     df_iti_consolidado.to_excel(writer, sheet_name='ITI', index=False)
 
+# Exibir as colunas disponíveis após a consolidação
+print("Colunas disponíveis na tabela SPN:", df_spn_consolidado.columns.tolist())
+print("Colunas disponíveis na tabela ITI:", df_iti_consolidado.columns.tolist())
+
 print("Consolidação concluída com sucesso.")
