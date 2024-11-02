@@ -1,36 +1,109 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
+import os
+from dotenv import load_dotenv
 
-# Configuração inicial da página do Streamlit
-st.set_page_config(page_title="Dados Consolidados", layout="wide")
+# Carregar variáveis de ambiente
+load_dotenv()
 
-# Caminho para o arquivo Excel consolidado
-caminho_arquivo = 'Base/consolidado.xlsx'  # Usando caminho relativo
+# Configuração da página
+st.set_page_config(page_title="DataPaws", page_icon="Base/IMG/Designer.jpeg", layout="wide")
 
-# Função para carregar as abas de dados do arquivo Excel consolidado
+# Carregar credenciais do .env
+usuarios = {
+    "emerson": (os.getenv("USERNAME_EMERSON"), "Emerson Simette"),
+    "willian": (os.getenv("USERNAME_WILLIAN"), "Willian Jones Rios"),
+    "rafael": (os.getenv("USERNAME_RAFAEL"), "Rafael Dall'Anese"),
+    "admin": (os.getenv("USERNAME_ADMIN"), "Administrador"),
+}
+
+def verificar_login(username, password):
+    """Verifica as credenciais do usuário."""
+    if username in usuarios and password == usuarios[username][0]:
+        return usuarios[username][1]  # Retorna o nome do usuário
+    return None  # Retorna None se o login falhar
+
 @st.cache_data
 def carregar_dados(caminho_arquivo):
-    """Carrega as abas SPN e ITI de um arquivo Excel consolidado e as retorna como DataFrames."""
-    try:
-        df_spn = pd.read_excel(caminho_arquivo, sheet_name='SPN')
-        df_iti = pd.read_excel(caminho_arquivo, sheet_name='ITI')
-        return df_spn, df_iti
-    except FileNotFoundError:
-        st.error("Arquivo não encontrado. Verifique o caminho e tente novamente.")
-        return pd.DataFrame(), pd.DataFrame()  # Retorna DataFrames vazios
-    except Exception as e:
-        st.error(f"Ocorreu um erro ao carregar os dados: {e}")
-        return pd.DataFrame(), pd.DataFrame()  # Retorna DataFrames vazios
+    """Carrega dados do arquivo Excel."""
+    return pd.read_excel(caminho_arquivo, sheet_name=None)
 
-# Verifica se o arquivo existe
-if not pd.io.common.file_exists(caminho_arquivo):
-    st.error(f"O arquivo {caminho_arquivo} não foi encontrado.")
+caminho_arquivo = 'Base/consolidado.xlsx'
+
+if 'login' not in st.session_state:
+    st.session_state.login = False
+
+if not st.session_state.login:
+    # Tela de login
+    st.markdown('<div class="login">', unsafe_allow_html=True)
+    st.markdown('<h1>DataPaws</h1>', unsafe_allow_html=True)
+
+    with st.form(key='login_form', clear_on_submit=True):
+        username = st.text_input("Usuário", placeholder="Username").lower()
+        password = st.text_input("Senha", type="password", placeholder="Password")
+        submit_button = st.form_submit_button("Entrar")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    if submit_button:
+        nome_usuario = verificar_login(username, password)
+        if nome_usuario:
+            st.session_state.login = True
+            st.session_state.nome_usuario = nome_usuario
+            st.success("Login realizado com sucesso!")
+        else:
+            st.error("Usuário ou senha incorretos.")
 else:
-    # Carrega as abas SPN e ITI
-    df_spn, df_iti = carregar_dados(caminho_arquivo)
+    # Estilo para cabeçalho fixo
+    st.markdown("""
+        <style>
+        .fixed-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background-color: white;
+            z-index: 1;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .fixed-header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .fixed-header h2 {
+            margin: 0;
+            font-size: 18px;
+            color: #555;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # Cabeçalho fixo
+    st.markdown('<div class="fixed-header"><h1>DataPaws</h1><h2>Análise de Dados Consolidados - Backlog</h2><div>', unsafe_allow_html=True)
+    st.sidebar.header(f"{st.session_state.nome_usuario} ")
+    
+    # Botão de logout ao lado do nome
+    if st.sidebar.button("Logout"):
+        st.session_state.login = False
+        st.success("Logout realizado com sucesso!")
+    
+    st.markdown('</div></div>', unsafe_allow_html=True)
+
+    # Carregar e processar os dados
+    df_dados = carregar_dados(caminho_arquivo)
+    df_spn = df_dados['SPN']
+    df_iti = df_dados['ITI']
+
+    # Verificar se as colunas necessárias estão presentes
+    if 'Setor' not in df_spn.columns or 'Setor' not in df_iti.columns:
+        st.error("A coluna 'Setor' não foi encontrada em uma das abas. Verifique os nomes das colunas no arquivo.")
+        st.stop()
 
     # Combina os dados e adiciona uma coluna para identificar a aba de origem
     df_spn['Aba'] = 'SPN'
@@ -38,42 +111,41 @@ else:
     df_consolidado = pd.concat([df_spn, df_iti], ignore_index=True)
 
     # Barra lateral para filtros
-    st.sidebar.header("Filtros")
+    st.sidebar.header("Filtros por Área")
 
-    # Filtro de Aba
-    aba_selecionada = st.sidebar.selectbox("Selecionar Área", options=['Todas', 'SPN', 'ITI'])
+    # Filtro de Setor usando caixas de seleção
+    setores_disponiveis = df_consolidado['Setor'].unique()
+    setores_selecionados = [setor for setor in setores_disponiveis if st.sidebar.checkbox(setor, value=True)]
 
-    # Filtro de Semana
-    semanas_unicas = df_consolidado['Semana'].dropna().unique()
-    semana_selecionada = st.sidebar.selectbox("Selecionar Semana", options=['Todas'] + sorted(semanas_unicas))
-
-    # Aplicar filtros ao DataFrame consolidado
-    df_filtrado = df_consolidado.copy()
-    if aba_selecionada != 'Todas':
-        df_filtrado = df_filtrado[df_filtrado['Aba'] == aba_selecionada]
-
-    if semana_selecionada != 'Todas':
-        df_filtrado = df_filtrado[df_filtrado['Semana'] == semana_selecionada]
+    # Aplicar filtro de setor ao DataFrame
+    df_filtrado = df_consolidado[df_consolidado['Setor'].isin(setores_selecionados)]
 
     # Exibir título da página principal
-    st.title("Análise de Dados Consolidados")
+    st.title("Análise de Dados Consolidados - Backlog")
 
     # Exibir total de registros após aplicação dos filtros
-    st.write(f"**Total de Registros:** {len(df_filtrado)}")
-    st.dataframe(df_filtrado.drop(columns=['Aba']))  # Oculta a coluna "Aba"
+    total_registros = len(df_filtrado)
+    total_resolvidos = len(df_filtrado[df_filtrado['Status'] == 'Resolvido'])
+    total_pendentes = total_registros - total_resolvidos
 
-    # Gráfico 1: Quantidade de incidentes por setor
-    st.header("Quantidade de Incidentes por Setor")
+    # Cálculo das porcentagens
+    percentual_resolvidos = (total_resolvidos / total_registros * 100) if total_registros > 0 else 0
+    percentual_pendentes = (total_pendentes / total_registros * 100) if total_registros > 0 else 0
+
+    st.write(f"**Total de Registros:** {total_registros} "
+             f"**Resolvidos:** {total_resolvidos} ({percentual_resolvidos:.1f}%) "
+             f"**Pendentes:** {total_pendentes} ({percentual_pendentes:.1f}%)")
 
     if not df_filtrado.empty:
+        # Total de incidentes por setor
         df_total_sector = df_filtrado['Setor'].value_counts()
         df_resolved = df_filtrado[df_filtrado['Status'] == 'Resolvido']
         df_resolved_sector = df_resolved['Setor'].value_counts()
-
         df_unresolved_sector = df_total_sector - df_resolved_sector.reindex(df_total_sector.index, fill_value=0)
 
-        # Criar o gráfico
+        # Criar gráfico de barras
         fig_incidentes = go.Figure()
+
         fig_incidentes.add_trace(go.Bar(
             x=df_total_sector.index,
             y=df_total_sector.values,
@@ -110,140 +182,146 @@ else:
             xaxis_tickangle=-45
         )
 
-        st.plotly_chart(fig_incidentes, use_container_width=True)
+        # Gráfico de backlog por status
+        if 'Backlog' in df_filtrado.columns:
+            backlog_por_status = (
+                df_filtrado.groupby(['Backlog', 'Status'])
+                .size()
+                .unstack(fill_value=0)
+                .reset_index()
+            )
+            
+            backlog_por_status['Total'] = backlog_por_status.sum(axis=1, numeric_only=True)
 
-    # Gráfico de Linha para Status concluído, não concluído e total
-    st.subheader("Distribuição de Incidentes por Mês/Ano e Status")
-
-    if 'Backlog' in df_filtrado.columns:
-        df_filtrado['Backlog'] = pd.to_datetime(df_filtrado['Backlog'], errors='coerce')
-
-        backlog_por_status = (
-            df_filtrado.groupby(['Backlog', 'Status'])
-            .size()
-            .unstack(fill_value=0)
-            .reset_index()
-        )
-
-        backlog_por_status['Total'] = backlog_por_status.sum(axis=1, numeric_only=True)
-
-        status_columns = ['Resolvido', 'Pendente', 'Total']
-        for col in status_columns:
-            if col not in backlog_por_status.columns:
-                backlog_por_status[col] = 0
-
-        colors = ['blue', 'red', 'green']
-
-        fig_backlog_status = px.line(
-            backlog_por_status,
-            x='Backlog',
-            y=['Resolvido', 'Pendente', 'Total'],
-            labels={'Backlog': 'Mês/Ano', 'value': 'Contagem', 'variable': 'Status'},
-            title="Distribuição de Incidentes por Status",
-            markers=True,
-            color_discrete_sequence=colors
-        )
-
-        for col in ['Resolvido', 'Pendente', 'Total']:
-            fig_backlog_status.add_trace(
-                go.Scatter(
-                    x=backlog_por_status['Backlog'],
-                    y=backlog_por_status[col],
-                    mode='markers+text',
-                    name=col,
-                    text=backlog_por_status[col].astype(str),
-                    textposition='top center',
-                    marker=dict(size=8),
-                    showlegend=False
-                )
+            colors = ['blue', 'red', 'green'] 
+            
+            fig_backlog_status = px.line(
+                backlog_por_status,
+                x='Backlog',
+                y=['Resolvido', 'Pendente', 'Total'],
+                labels={'Backlog': 'Mês/Ano', 'value': 'Contagem', 'variable': 'Status'},
+                title="Distribuição de Incidentes por Status",
+                markers=True,
+                color_discrete_sequence=colors
             )
 
-        fig_backlog_status.update_layout(
-            xaxis_title="Mês/Ano",
-            yaxis_title="Contagem",
-            showlegend=True
-        )
+            # Manter a legenda
+            fig_backlog_status.update_layout(legend_title_text='Status')
 
-        st.plotly_chart(fig_backlog_status, use_container_width=True)
+            # Adicionando rótulos de dados ao gráfico de linha
+            for trace in fig_backlog_status.data:
+                trace.text = trace.y  # Adiciona os valores como texto
+                trace.textposition = 'top center'  # Posição do texto
 
-    # Gráfico de Pizza: Distribuição Backlog Responsáveis
-    st.subheader("Distribuição Backlog Responsáveis")
+            # Adicionando anotações para mostrar os valores
+            for trace in fig_backlog_status.data:
+                for x, y in zip(backlog_por_status['Backlog'], trace.y):
+                    fig_backlog_status.add_annotation(
+                        x=x,
+                        y=y,
+                        text=str(y),
+                        showarrow=True,
+                        arrowhead=2,
+                        ax=0,
+                        ay=-10,
+                        font=dict(size=10)
+                    )
 
-    if 'Responsavel' in df_filtrado.columns:
-        df_status = df_filtrado['Responsavel'].value_counts()
-        total = df_status.sum()
-        percentages = df_status / total * 100
-
-        df_status_grouped = df_status[percentages >= 5]
-        other_count = df_status[percentages < 5].sum()
-
-        if other_count > 0:
-            df_status_grouped['Outros'] = other_count
-
-        if not df_status_grouped.empty:
-            fig_responsaveis = px.pie(
-                df_status_grouped,
-                names=df_status_grouped.index,
-                values=df_status_grouped.values,
-                title='Distribuição Backlog por Responsáveis',
-                hole=0.3
-            )
-            st.plotly_chart(fig_responsaveis, use_container_width=True)
-
-    # Gráfico 4: Desempenho dos Responsáveis
-    st.subheader("Desempenho dos Responsáveis")
-
-    if 'Responsavel' in df_filtrado.columns:
-        df_responsavel = df_filtrado['Responsavel'].value_counts()
-        resolved_by_responsavel = df_filtrado[df_filtrado['Status'] == 'Resolvido']['Responsavel'].value_counts()
-
-        percent_resolved = (resolved_by_responsavel / df_responsavel) * 100
-
-        df_desempenho = pd.DataFrame({
-            'Total': df_responsavel,
-            'Resolvidos': resolved_by_responsavel,
-            'Percentual Resolvidos': percent_resolved.fillna(0)
-        }).reset_index()
-
-        df_desempenho.columns = ['Responsável', 'Total', 'Resolvidos', 'Percentual Resolvidos']
-
+        # Gráfico de desempenho por responsável
         fig_desempenho = go.Figure()
-        fig_desempenho.add_trace(go.Bar(
-            x=df_desempenho['Responsável'],
-            y=df_desempenho['Total'],
-            name='Total',
-            marker_color='lightblue',
-            text=df_desempenho['Total'],
-            textposition='auto'
-        ))
+        if 'Responsavel' in df_filtrado.columns:
+            df_responsavel_grouped = df_filtrado.drop_duplicates(subset=['Responsavel', 'Incidente']).groupby(['Responsavel', 'Status']).size().unstack(fill_value=0)
 
-        fig_desempenho.add_trace(go.Bar(
-            x=df_desempenho['Responsável'],
-            y=df_desempenho['Resolvidos'],
-            name='Resolvidos',
-            marker_color='lightgreen',
-            text=df_desempenho['Resolvidos'],
-            textposition='auto'
-        ))
+            df_responsavel_grouped['Total'] = df_responsavel_grouped.sum(axis=1)
+            df_responsavel_grouped['Percentual Resolvidos'] = (df_responsavel_grouped.get('Resolvido', 0) / df_responsavel_grouped['Total']) * 100
 
-        fig_desempenho.update_layout(
-            title='Desempenho dos Responsáveis',
-            xaxis_title='Responsável',
-            yaxis_title='Quantidade',
-            barmode='group',
-            legend_title='Tipo'
-        )
+            df_responsavel_grouped = df_responsavel_grouped.reset_index()
+            
+            # Ordenar o DataFrame pelo total em ordem decrescente
+            df_responsavel_grouped = df_responsavel_grouped.sort_values(by='Total', ascending=False)
 
-        for i in range(len(df_desempenho)):
-            fig_desempenho.add_annotation(
-                x=df_desempenho['Responsável'][i],
-                y=df_desempenho['Resolvidos'][i],
-                text=f"{df_desempenho['Percentual Resolvidos'][i]:.1f}%",
-                showarrow=True,
-                arrowhead=2,
-                ax=0,
-                ay=-30,
-                font=dict(size=10)
+            fig_desempenho.add_trace(go.Bar(
+                x=df_responsavel_grouped['Responsavel'],
+                y=df_responsavel_grouped['Total'],
+                name='Total',
+                marker_color='lightblue',
+                text=df_responsavel_grouped['Total'],
+                textposition='inside'
+            ))
+
+            fig_desempenho.add_trace(go.Bar(
+                x=df_responsavel_grouped['Responsavel'],
+                y=df_responsavel_grouped['Resolvido'],
+                name='Resolvidos',
+                marker_color='lightgreen',
+                text=df_responsavel_grouped['Resolvido'],
+                textposition='inside'
+            ))
+
+            fig_desempenho.update_layout(
+                title='Desempenho dos Responsáveis',
+                xaxis_title='Responsável',
+                yaxis_title='Quantidade',
+                barmode='group',
+                legend_title='Tipo'
             )
 
-        st.plotly_chart(fig_desempenho, use_container_width=True)
+            for i in range(len(df_responsavel_grouped)):
+                fig_desempenho.add_annotation(
+                    x=df_responsavel_grouped['Responsavel'][i],
+                    y=df_responsavel_grouped['Resolvido'][i],
+                    text=f"{df_responsavel_grouped['Percentual Resolvidos'][i]:.1f}%",
+                    showarrow=True,
+                    arrowhead=2,
+                    ax=0,
+                    ay=-30,
+                    font=dict(size=10)
+                )
+
+        # Gráfico de pizza
+        if 'Responsavel' in df_filtrado.columns:
+            df_status = df_filtrado.drop_duplicates(subset=['Responsavel', 'Incidente']).groupby('Responsavel').size()
+            
+            total = df_status.sum()
+            percentages = df_status / total * 100
+
+            df_status_grouped = df_status[percentages >= 5]
+            other_count = df_status[percentages < 5].sum()
+
+            if other_count > 0:
+                df_status_grouped['Outros'] = other_count
+
+            # Gráfico de pizza se houver dados
+            if not df_status_grouped.empty:
+                fig_responsaveis = px.pie(
+                    df_status_grouped,
+                    names=df_status_grouped.index,
+                    values=df_status_grouped.values,
+                    title='Distribuição Backlog por Responsáveis',
+                    hole=0.3
+                )
+
+                # Adicionando rótulos de dados ao gráfico de pizza
+                fig_responsaveis.update_traces(textinfo='percent')
+
+        # Disposição dos gráficos em 3x2
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.plotly_chart(fig_incidentes, use_container_width=True)
+
+        with col2:
+            if 'Backlog' in df_filtrado.columns:
+                st.plotly_chart(fig_backlog_status, use_container_width=True)
+
+        col3, col4 = st.columns(2)
+
+        with col3:
+            if 'Responsavel' in df_filtrado.columns and 'fig_responsaveis' in locals():
+                st.plotly_chart(fig_responsaveis, use_container_width=True)
+
+        with col4:
+            st.plotly_chart(fig_desempenho, use_container_width=True)
+
+    else:
+        st.write("Nenhum registro encontrado com os filtros aplicados.")
