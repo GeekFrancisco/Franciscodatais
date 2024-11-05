@@ -47,7 +47,7 @@ def add_labels_line(ax, x_data, y_data):
 
 # Gráfico 1: Quantidade de incidentes por setor (total e resolvidos)
 df_total_sector = df['Setor'].value_counts()  # Total de incidentes por setor
-df_resolved = df[df['Status'] == 'Concluido']  # Filtrar apenas os resolvidos
+df_resolved = df[df['Status'] == 'Resolvido']  # Filtrar apenas os resolvidos
 df_resolved_sector = df_resolved['Setor'].value_counts()  # Total de incidentes resolvidos por setor
 
 # Calcular o total de incidentes não resolvidos
@@ -96,10 +96,10 @@ for i, unresolved in enumerate(df_unresolved_sector.values):
 backlog_by_date = df.groupby(df['Backlog'].dt.to_period('M')).size()
 
 # Backlog resolvido
-resolved_by_date = df[df['Status'] == 'Concluido'].groupby(df['Backlog'].dt.to_period('M')).size()
+resolved_by_date = df[df['Status'] == 'Resolvido'].groupby(df['Backlog'].dt.to_period('M')).size()
 
 # Backlog pendente (não resolvido)
-pending_by_date = df[df['Status'] != 'Concluido'].groupby(df['Backlog'].dt.to_period('M')).size()
+pending_by_date = df[df['Status'] != 'Resolvido'].groupby(df['Backlog'].dt.to_period('M')).size()
 
 # Reindexar os dados resolvidos e pendentes para alinhar com o backlog total, preenchendo valores faltantes com 0
 resolved_by_date = resolved_by_date.reindex(backlog_by_date.index, fill_value=0)
@@ -150,7 +150,7 @@ else:
 
 # Gráfico 4: Quantidade de incidentes por responsável (gráfico de barras em pé)
 df_responsavel = df['Responsavel'].value_counts()
-resolved_by_responsavel = df[df['Status'] == 'Concluido']['Responsavel'].value_counts()
+resolved_by_responsavel = df[df['Status'] == 'Resolvido']['Responsavel'].value_counts()
 
 # Calculando o percentual de resolvidos
 percent_resolved = (resolved_by_responsavel / df_responsavel) * 100

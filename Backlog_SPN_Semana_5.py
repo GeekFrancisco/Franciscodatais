@@ -5,7 +5,7 @@ import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages
 
 # Caminho para a planilha na pasta raiz do projeto
-file_path = 'Base\consolidado.xlsx'
+file_path = 'Base\Backlog_5.xlsx'
 
 # Tentar carregar a aba 'SPN' da planilha "Backlog.xlsx"
 try:
@@ -25,14 +25,14 @@ except Exception as e:
     exit()
 
 # Criar um PDF para salvar os gráficos
-pdf_path = "Graficos_Backlog_SPN_Semana_cons.pdf"
+pdf_path = "Graficos_Backlog_SPN_Semana_05.pdf"
 pdf = PdfPages(pdf_path)
 
 # Configurar o layout da página com vários gráficos (ex: 2 linhas e 2 colunas)
 fig, axs = plt.subplots(2, 2, figsize=(12, 10))  # 2x2 grid de gráficos
 
 # Adicionar título global à página
-fig.suptitle('Análise Backlog SPN - Semana 28/10 a 01/11', fontsize=16)
+fig.suptitle('Análise Backlog SPN - Semana 04/11 a 08/11', fontsize=16)
 
 # Função auxiliar para adicionar rótulos de dados
 def add_labels_bars(ax):
@@ -47,7 +47,7 @@ def add_labels_line(ax, x_data, y_data):
 
 # Gráfico 1: Quantidade de incidentes por setor (total e resolvidos)
 df_total_sector = df['Setor'].value_counts()  # Total de incidentes por setor
-df_resolved = df[df['Status'] == 'Concluido']  # Filtrar apenas os resolvidos
+df_resolved = df[df['Status'] == 'Resolvido']  # Filtrar apenas os resolvidos
 df_resolved_sector = df_resolved['Setor'].value_counts()  # Total de incidentes resolvidos por setor
 
 # Calcular o total de incidentes não resolvidos
@@ -89,15 +89,17 @@ for i, unresolved in enumerate(df_unresolved_sector.values):
     axs[0, 0].text(i + 2 * bar_width, (unresolved / 2) - 1, f'({(unresolved / df_total_sector.iloc[i] * 100):.1f}%)', 
                    ha='center', va='top', color='black')  # Percentual logo abaixo dos Pendentes
 
+
+
 # Gráfico 2: Evolução do Backlog ao longo do tempo
 # Backlog total
 backlog_by_date = df.groupby(df['Backlog'].dt.to_period('M')).size()
 
 # Backlog resolvido
-resolved_by_date = df[df['Status'] == 'Concluido'].groupby(df['Backlog'].dt.to_period('M')).size()
+resolved_by_date = df[df['Status'] == 'Resolvido'].groupby(df['Backlog'].dt.to_period('M')).size()
 
 # Backlog pendente (não resolvido)
-pending_by_date = df[df['Status'] != 'Concluido'].groupby(df['Backlog'].dt.to_period('M')).size()
+pending_by_date = df[df['Status'] != 'Resolvido'].groupby(df['Backlog'].dt.to_period('M')).size()
 
 # Reindexar os dados resolvidos e pendentes para alinhar com o backlog total, preenchendo valores faltantes com 0
 resolved_by_date = resolved_by_date.reindex(backlog_by_date.index, fill_value=0)
