@@ -5,11 +5,11 @@ import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages
 
 # Caminho para a planilha na pasta raiz do projeto
-file_path = 'Base\consolidado.xlsx'
+file_path = 'Base\Backlog_5.xlsx'
 
 # Tentar carregar a aba 'SPN' da planilha "Backlog.xlsx"
 try:
-    df = pd.read_excel(file_path, sheet_name='SPN')
+    df = pd.read_excel(file_path, sheet_name='ITI')
 except FileNotFoundError:
     print(f"Erro: O arquivo '{file_path}' não foi encontrado.")
     exit()
@@ -25,14 +25,14 @@ except Exception as e:
     exit()
 
 # Criar um PDF para salvar os gráficos
-pdf_path = "Graficos_Backlog_SPN_Semana_cons.pdf"
+pdf_path = "Graficos_Backlog_ITI_Semana_05.pdf"
 pdf = PdfPages(pdf_path)
 
 # Configurar o layout da página com vários gráficos (ex: 2 linhas e 2 colunas)
 fig, axs = plt.subplots(2, 2, figsize=(12, 10))  # 2x2 grid de gráficos
 
 # Adicionar título global à página
-fig.suptitle('Análise Backlog SPN - Semana 28/10 a 01/11', fontsize=16)
+fig.suptitle('Análise Backlog ITI - Semana 04/11 a 08/11', fontsize=16)
 
 # Função auxiliar para adicionar rótulos de dados
 def add_labels_bars(ax):
@@ -88,6 +88,8 @@ for i, unresolved in enumerate(df_unresolved_sector.values):
     axs[0, 0].text(i + 2 * bar_width, unresolved / 2, str(unresolved), ha='center', va='center', color='black')  # Pendentes no meio
     axs[0, 0].text(i + 2 * bar_width, (unresolved / 2) - 1, f'({(unresolved / df_total_sector.iloc[i] * 100):.1f}%)', 
                    ha='center', va='top', color='black')  # Percentual logo abaixo dos Pendentes
+
+
 
 # Gráfico 2: Evolução do Backlog ao longo do tempo
 # Backlog total
@@ -148,7 +150,7 @@ else:
 
 # Gráfico 4: Quantidade de incidentes por responsável (gráfico de barras em pé)
 df_responsavel = df['Responsavel'].value_counts()
-resolved_by_responsavel = df[df['Status'] == 'Resolvido']['Responsavel'].value_counts()
+resolved_by_responsavel = df[df['Status'] == 'Concluido']['Responsavel'].value_counts()
 
 # Calculando o percentual de resolvidos
 percent_resolved = (resolved_by_responsavel / df_responsavel) * 100

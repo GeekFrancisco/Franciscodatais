@@ -231,10 +231,8 @@ else:
         fig_desempenho = go.Figure()
         if 'Responsavel' in df_filtrado.columns:
             df_responsavel_grouped = df_filtrado.drop_duplicates(subset=['Responsavel', 'Incidente']).groupby(['Responsavel', 'Status']).size().unstack(fill_value=0)
-
             df_responsavel_grouped['Total'] = df_responsavel_grouped.sum(axis=1)
             df_responsavel_grouped['Percentual Resolvidos'] = (df_responsavel_grouped.get('Resolvido', 0) / df_responsavel_grouped['Total']) * 100
-
             df_responsavel_grouped = df_responsavel_grouped.reset_index()
             
             # Ordenar o DataFrame pelo total em ordem decrescente
@@ -280,14 +278,11 @@ else:
 
         # Gráfico de pizza
         if 'Responsavel' in df_filtrado.columns:
-            df_status = df_filtrado.drop_duplicates(subset=['Responsavel', 'Incidente']).groupby('Responsavel').size()
-            
+            df_status = df_filtrado.drop_duplicates(subset=['Responsavel', 'Incidente']).groupby('Responsavel').size()            
             total = df_status.sum()
             percentages = df_status / total * 100
-
             df_status_grouped = df_status[percentages >= 5]
             other_count = df_status[percentages < 5].sum()
-
             if other_count > 0:
                 df_status_grouped['Outros'] = other_count
 
