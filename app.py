@@ -4,188 +4,182 @@ import plotly.express as px
 import plotly.graph_objects as go
 import os
 from dotenv import load_dotenv
-from typing import Dict, List, Tuple, Optional
-from dataclasses import dataclass
-import hashlib
-import secrets
-import datetime
-from functools import wraps
 
-# Configurações iniciais
+# Carregar variáveis de ambiente
 load_dotenv()
 
-# Constantes
-PAGE_TITLE = "DataPaws"
-PAGE_ICON = "Base/IMG/Designer.jpeg"
-DATA_PATH = 'Base/consolidado.xlsx'
-CHART_COLORS = {
-    'total': 'skyblue',
-    'resolved': 'lightgreen',
-    'pending': 'salmon',
-    'status_lines': ['blue', 'red', 'green']
+# Configuração da página
+if 'login' not in st.session_state or not st.session_state.login:
+    # Se não estiver logado, use o layout "centered"
+    st.set_page_config(page_title="DataPaws", page_icon="Base/IMG/Designer.jpeg", layout="centered")
+else:
+    # Se estiver logado, use o layout "wide"
+    st.set_page_config(page_title="DataPaws", page_icon="Base/IMG/Designer.jpeg", layout="wide")
+
+
+# Carregar credenciais do .env
+usuarios = {
+    "emerson": (os.getenv("USERNAME_EMERSON"), "Emerson Simette"),
+    "willian": (os.getenv("USERNAME_WILLIAN"), "Willian Jones Rios"),
+    "rafael": (os.getenv("USERNAME_RAFAEL"), "Rafael Dall'Anese"),
+    "admin": (os.getenv("USERNAME_ADMIN"), "Administrador"),
 }
-MIN_PERCENTAGE_FOR_PIE = 5
 
-@dataclass
-class Usuario:
-    username: str
-    senha_hash: str
-    salt: str
-    nome_completo: str
-    ultimo_acesso: datetime.datetime = None
+def verificar_login(username, password):
+    """Verifica as credenciais do usuário."""
+    if username in usuarios and password == usuarios[username][0]:
+        return usuarios[username][1]  # Retorna o nome do usuário
+    return None  # Retorna None se o login falhar
 
-class SecurityManager:
-    def __init__(self):
-        self._initialize_security()
-    
-    def _initialize_security(self):
-        """Inicializa configurações de segurança"""
-        self.max_attempts = 3
-        self.lockout_duration = 300  # 5 minutos
-        self.failed_attempts = {}
-        self.locked_accounts = {}
-    
-    def is_account_locked(self, username: str) -> bool:
-        """Verifica se uma conta está bloqueada"""
-        if username in self.locked_accounts:
-            lock_time = self.locked_accounts[username]
-            if (datetime.datetime.now() - lock_time).seconds < self.lockout_duration:
-                return True
-            del self.locked_accounts[username]
-        return False
-    
-    def record_failed_attempt(self, username: str):
-        """Registra uma tentativa falha de login"""
-        current_time = datetime.datetime.now()
-        if username not in self.failed_attempts:
-            self.failed_attempts[username] = []
-        
-        self.failed_attempts[username].append(current_time)
-        
-        # Remove tentativas antigas (mais de 1 hora)
-        self.failed_attempts[username] = [
-            attempt for attempt in self.failed_attempts[username]
-            if (current_time - attempt).seconds < 3600
-        ]
-        
-        if len(self.failed_attempts[username]) >= self.max_attempts:
-            self.locked_accounts[username] = current_time
-    
-    def clear_failed_attempts(self, username: str):
-        """Limpa as tentativas falhas após login bem-sucedido"""
-        if username in self.failed_attempts:
-            del self.failed_attempts[username]
+@st.cache_data
+def carregar_dados(caminho_arquivo):
+    """Carrega dados do arquivo Excel."""
+    return pd.read_excel(caminho_arquivo, sheet_name=None)
 
-class AuthManager:
-    def __init__(self):
-        self.usuarios = self._inicializar_usuarios()
-        self.security = SecurityManager()
-    
-    def _hash_senha(self, senha: str, salt: str = None) -> Tuple[str, str]:
-        if salt is None:
-            salt = secrets.token_hex(16)
-        senha_completa = senha + salt
-        return hashlib.sha256(senha_completa.encode()).hexdigest(), salt
-    
-    def _inicializar_usuarios(self) -> Dict[str, Usuario]:
-        usuarios = {}
-        usernames = ['emerson', 'willian', 'rafael', 'admin']
-        
-        for username in usernames:
-            senha_env = os.getenv(f"PASSWORD_{username.upper()}")
-            if senha_env:
-                salt = secrets.token_hex(16)
-                senha_hash, _ = self._hash_senha(senha_env, salt)
-                
-                usuarios[username] = Usuario(
-                    username=username,
-                    senha_hash=senha_hash,
-                    salt=salt,
-                    nome_completo=os.getenv(f"FULLNAME_{username.upper()}", f"User {username}")
-                )
-        
-        return usuarios
+caminho_arquivo = 'Base/consolidado.xlsx'
 
-    def verificar_login(self, username: str, senha_tentativa: str) -> Optional[str]:
-        username = username.lower()
-        
-        if self.security.is_account_locked(username):
-            return None
-            
-        usuario = self.usuarios.get(username)
-        if not usuario:
-            self.security.record_failed_attempt(username)
-            return None
-            
-        senha_hash_tentativa, _ = self._hash_senha(senha_tentativa, usuario.salt)
-        
-        if secrets.compare_digest(senha_hash_tentativa, usuario.senha_hash):
-            self.security.clear_failed_attempts(username)
-            usuario.ultimo_acesso = datetime.datetime.now()
-            return usuario.nome_completo
-            
-        self.security.record_failed_attempt(username)
-        return None
+if 'login' not in st.session_state:
+    st.session_state.login = False
 
-class DataManager:
-    @staticmethod
-    @st.cache_data
-    def carregar_dados(caminho_arquivo: str) -> Dict[str, pd.DataFrame]:
-        """Carrega e faz cache dos dados do Excel"""
-        return pd.read_excel(caminho_arquivo, sheet_name=None)
+if not st.session_state.login:
+    # Tela de login
+    st.markdown('<div class="login">', unsafe_allow_html=True)
+    st.markdown('<h1>DataPaws</h1>', unsafe_allow_html=True)
+
+    with st.form(key='login_form', clear_on_submit=True):
+        username = st.text_input("Usuário", placeholder="Username").lower()
+        password = st.text_input("Senha", type="password", placeholder="Password")
+        submit_button = st.form_submit_button("Entrar")
     
-    @staticmethod
-    def processar_dados(df_dados: Dict[str, pd.DataFrame]) -> pd.DataFrame:
-        """Processa e combina os dados das diferentes abas"""
-        df_spn = df_dados['SPN'].copy()
-        df_iti = df_dados['ITI'].copy()
-        
-        # Adiciona identificador da origem
-        df_spn['Aba'] = 'SPN'
-        df_iti['Aba'] = 'ITI'
-        
-        return pd.concat([df_spn, df_iti], ignore_index=True)
-    
-    @staticmethod
-    def calcular_estatisticas(df: pd.DataFrame) -> Dict[str, float]:
-        """Calcula estatísticas gerais dos dados"""
-        total_registros = len(df)
-        total_resolvidos = len(df[df['Status'] == 'Resolvido'])
-        total_pendentes = total_registros - total_resolvidos
-        
-        return {
-            'total': total_registros,
-            'resolvidos': total_resolvidos,
-            'pendentes': total_pendentes,
-            'perc_resolvidos': (total_resolvidos / total_registros * 100) if total_registros > 0 else 0,
-            'perc_pendentes': (total_pendentes / total_registros * 100) if total_registros > 0 else 0
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    if submit_button:
+        nome_usuario = verificar_login(username, password)
+        if nome_usuario:
+            st.session_state.login = True
+            st.session_state.nome_usuario = nome_usuario
+            st.success("Login realizado com sucesso!")
+        else:
+            st.error("Usuário ou senha incorretos.")
+else:
+    # Estilo para cabeçalho fixo
+    st.markdown("""
+        <style>
+        .fixed-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background-color: white;
+            z-index: 1;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
+        .fixed-header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .fixed-header h2 {
+            margin: 0;
+            font-size: 18px;
+            color: #555;
+        }
+        </style>
+    """, unsafe_allow_html=True)
 
-class ChartManager:
-    @staticmethod
-    def criar_grafico_incidentes(df: pd.DataFrame) -> go.Figure:
-        """Cria gráfico de barras comparativo de incidentes"""
-        df_total = df['Setor'].value_counts()
-        df_resolved = df[df['Status'] == 'Resolvido']['Setor'].value_counts()
-        df_pending = df_total - df_resolved.reindex(df_total.index, fill_value=0)
-        
-        fig = go.Figure()
-        
-        for data, name, color in [
-            (df_total, 'Total', CHART_COLORS['total']),
-            (df_resolved.reindex(df_total.index, fill_value=0), 'Resolvidos', CHART_COLORS['resolved']),
-            (df_pending, 'Pendentes', CHART_COLORS['pending'])
-        ]:
-            fig.add_trace(go.Bar(
-                x=df_total.index,
-                y=data.values,
-                name=name,
-                marker_color=color,
-                text=[f'{val} ({(val/df_total.sum()*100):.1f}%)' for val in data.values],
-                textposition='inside'
-            ))
-        
-        fig.update_layout(
+    # Cabeçalho fixo
+    st.markdown('<div class="fixed-header"><h1>DataPaws</h1><h2>Análise de Dados Consolidados - Backlog</h2><div>', unsafe_allow_html=True)
+    st.sidebar.header(f"{st.session_state.nome_usuario} ")
+    
+    # Botão de logout ao lado do nome
+    if st.sidebar.button("Logout"):
+        st.session_state.login = False
+        st.success("Logout realizado com sucesso!")
+    
+    st.markdown('</div></div>', unsafe_allow_html=True)
+
+    # Carregar e processar os dados
+    df_dados = carregar_dados(caminho_arquivo)
+    df_spn = df_dados['SPN']
+    df_iti = df_dados['ITI']
+
+    # Verificar se as colunas necessárias estão presentes
+    if 'Setor' not in df_spn.columns or 'Setor' not in df_iti.columns:
+        st.error("A coluna 'Setor' não foi encontrada em uma das abas. Verifique os nomes das colunas no arquivo.")
+        st.stop()
+
+    # Combina os dados e adiciona uma coluna para identificar a aba de origem
+    df_spn['Aba'] = 'SPN'
+    df_iti['Aba'] = 'ITI'
+    df_consolidado = pd.concat([df_spn, df_iti], ignore_index=True)
+
+    # Barra lateral para filtros
+    st.sidebar.header("Filtros por Área")
+
+    # Filtro de Setor usando caixas de seleção
+    setores_disponiveis = df_consolidado['Setor'].unique()
+    setores_selecionados = [setor for setor in setores_disponiveis if st.sidebar.checkbox(setor, value=True)]
+
+    # Aplicar filtro de setor ao DataFrame
+    df_filtrado = df_consolidado[df_consolidado['Setor'].isin(setores_selecionados)]
+
+    # Exibir título da página principal
+    st.title("Análise de Dados Consolidados - Backlog")
+
+    # Exibir total de registros após aplicação dos filtros
+    total_registros = len(df_filtrado)
+    total_resolvidos = len(df_filtrado[df_filtrado['Status'] == 'Resolvido'])
+    total_pendentes = total_registros - total_resolvidos
+
+    # Cálculo das porcentagens
+    percentual_resolvidos = (total_resolvidos / total_registros * 100) if total_registros > 0 else 0
+    percentual_pendentes = (total_pendentes / total_registros * 100) if total_registros > 0 else 0
+
+    st.write(f"**Total de Registros:** {total_registros} "
+             f"**Resolvidos:** {total_resolvidos} ({percentual_resolvidos:.1f}%) "
+             f"**Pendentes:** {total_pendentes} ({percentual_pendentes:.1f}%)")
+
+    if not df_filtrado.empty:
+        # Total de incidentes por setor
+        df_total_sector = df_filtrado['Setor'].value_counts()
+        df_resolved = df_filtrado[df_filtrado['Status'] == 'Resolvido']
+        df_resolved_sector = df_resolved['Setor'].value_counts()
+        df_unresolved_sector = df_total_sector - df_resolved_sector.reindex(df_total_sector.index, fill_value=0)
+
+        # Criar gráfico de barras
+        fig_incidentes = go.Figure()
+
+        fig_incidentes.add_trace(go.Bar(
+            x=df_total_sector.index,
+            y=df_total_sector.values,
+            name='Total',
+            marker_color='skyblue',
+            text=[f'{val} ({(val / df_total_sector.sum() * 100):.1f}%)' for val in df_total_sector.values],
+            textposition='inside'
+        ))
+
+        fig_incidentes.add_trace(go.Bar(
+            x=df_resolved_sector.index,
+            y=df_resolved_sector.reindex(df_total_sector.index, fill_value=0).values,
+            name='Resolvidos',
+            marker_color='lightgreen',
+            text=[f'{val} ({(val / df_total_sector.sum() * 100):.1f}%)' for val in df_resolved_sector.reindex(df_total_sector.index, fill_value=0).values],
+            textposition='inside'
+        ))
+
+        fig_incidentes.add_trace(go.Bar(
+            x=df_unresolved_sector.index,
+            y=df_unresolved_sector.values,
+            name='Pendentes',
+            marker_color='salmon',
+            text=[f'{val} ({(val / df_total_sector.sum() * 100):.1f}%)' for val in df_unresolved_sector.values],
+            textposition='inside'
+        ))
+
+        fig_incidentes.update_layout(
             title='Comparativo entre Total, Resolvidos e Pendentes',
             xaxis_title='Setor',
             yaxis_title='Quantidade',
@@ -193,198 +187,142 @@ class ChartManager:
             legend_title='Tipo de Incidente',
             xaxis_tickangle=-45
         )
-        
-        return fig
-    
-    @staticmethod
-    def criar_grafico_backlog(df: pd.DataFrame) -> Optional[go.Figure]:
-        """Cria gráfico de linha para análise de backlog"""
-        if 'Backlog' not in df.columns:
-            return None
+
+        # Gráfico de backlog por status
+        if 'Backlog' in df_filtrado.columns:
+            backlog_por_status = (
+                df_filtrado.groupby(['Backlog', 'Status'])
+                .size()
+                .unstack(fill_value=0)
+                .reset_index()
+            )
             
-        backlog_por_status = (
-            df.groupby(['Backlog', 'Status'])
-            .size()
-            .unstack(fill_value=0)
-            .reset_index()
-        )
-        
-        backlog_por_status['Total'] = backlog_por_status.sum(axis=1, numeric_only=True)
-        
-        fig = px.line(
-            backlog_por_status,
-            x='Backlog',
-            y=['Resolvido', 'Pendente', 'Total'],
-            labels={'Backlog': 'Mês/Ano', 'value': 'Contagem', 'variable': 'Status'},
-            title="Distribuição de Incidentes por Status",
-            markers=True,
-            color_discrete_sequence=CHART_COLORS['status_lines']
-        )
-        
-        for trace in fig.data:
-            for x, y in zip(backlog_por_status['Backlog'], trace.y):
-                fig.add_annotation(
-                    x=x,
-                    y=y,
-                    text=str(y),
+            backlog_por_status['Total'] = backlog_por_status.sum(axis=1, numeric_only=True)
+
+            colors = ['blue', 'red', 'green'] 
+            
+            fig_backlog_status = px.line(
+                backlog_por_status,
+                x='Backlog',
+                y=['Resolvido', 'Pendente', 'Total'],
+                labels={'Backlog': 'Mês/Ano', 'value': 'Contagem', 'variable': 'Status'},
+                title="Distribuição de Incidentes por Status",
+                markers=True,
+                color_discrete_sequence=colors
+            )
+
+            # Manter a legenda
+            fig_backlog_status.update_layout(legend_title_text='Status')
+
+            # Adicionando rótulos de dados ao gráfico de linha
+            for trace in fig_backlog_status.data:
+                trace.text = trace.y  # Adiciona os valores como texto
+                trace.textposition = 'top center'  # Posição do texto
+
+            # Adicionando anotações para mostrar os valores
+            for trace in fig_backlog_status.data:
+                for x, y in zip(backlog_por_status['Backlog'], trace.y):
+                    fig_backlog_status.add_annotation(
+                        x=x,
+                        y=y,
+                        text=str(y),
+                        showarrow=True,
+                        arrowhead=2,
+                        ax=0,
+                        ay=-10,
+                        font=dict(size=10)
+                    )
+
+        # Gráfico de desempenho por responsável
+        fig_desempenho = go.Figure()
+        if 'Responsavel' in df_filtrado.columns:
+            df_responsavel_grouped = df_filtrado.drop_duplicates(subset=['Responsavel', 'Incidente']).groupby(['Responsavel', 'Status']).size().unstack(fill_value=0)
+            df_responsavel_grouped['Total'] = df_responsavel_grouped.sum(axis=1)
+            df_responsavel_grouped['Percentual Resolvidos'] = (df_responsavel_grouped.get('Resolvido', 0) / df_responsavel_grouped['Total']) * 100
+            df_responsavel_grouped = df_responsavel_grouped.reset_index()
+            
+            # Ordenar o DataFrame pelo total em ordem decrescente
+            df_responsavel_grouped = df_responsavel_grouped.sort_values(by='Total', ascending=False)
+
+            fig_desempenho.add_trace(go.Bar(
+                x=df_responsavel_grouped['Responsavel'],
+                y=df_responsavel_grouped['Total'],
+                name='Total',
+                marker_color='lightblue',
+                text=df_responsavel_grouped['Total'],
+                textposition='inside'
+            ))
+
+            fig_desempenho.add_trace(go.Bar(
+                x=df_responsavel_grouped['Responsavel'],
+                y=df_responsavel_grouped['Resolvido'],
+                name='Resolvidos',
+                marker_color='lightgreen',
+                text=df_responsavel_grouped['Resolvido'],
+                textposition='inside'
+            ))
+
+            fig_desempenho.update_layout(
+                title='Desempenho dos Responsáveis',
+                xaxis_title='Responsável',
+                yaxis_title='Quantidade',
+                barmode='group',
+                legend_title='Tipo'
+            )
+
+            for i in range(len(df_responsavel_grouped)):
+                fig_desempenho.add_annotation(
+                    x=df_responsavel_grouped['Responsavel'][i],
+                    y=df_responsavel_grouped['Resolvido'][i],
+                    text=f"{df_responsavel_grouped['Percentual Resolvidos'][i]:.1f}%",
                     showarrow=True,
                     arrowhead=2,
                     ax=0,
-                    ay=-10,
+                    ay=-30,
                     font=dict(size=10)
                 )
-        
-        return fig
-    
-    @staticmethod
-    def criar_grafico_responsaveis(df: pd.DataFrame) -> Optional[go.Figure]:
-        """Cria gráfico de pizza para distribuição por responsáveis"""
-        if 'Responsavel' not in df.columns:
-            return None
-            
-        df_status = df.drop_duplicates(subset=['Responsavel', 'Incidente']).groupby('Responsavel').size()
-        total = df_status.sum()
-        percentages = df_status / total * 100
-        
-        df_status_grouped = df_status[percentages >= MIN_PERCENTAGE_FOR_PIE]
-        other_count = df_status[percentages < MIN_PERCENTAGE_FOR_PIE].sum()
-        
-        if other_count > 0:
-            df_status_grouped['Outros'] = other_count
-            
-        if not df_status_grouped.empty:
-            fig = px.pie(
-                df_status_grouped,
-                names=df_status_grouped.index,
-                values=df_status_grouped.values,
-                title='Distribuição Backlog por Responsáveis',
-                hole=0.3
-            )
-            fig.update_traces(textinfo='percent')
-            return fig
-        return None
-    
-    @staticmethod
-    def criar_grafico_desempenho(df: pd.DataFrame) -> Optional[go.Figure]:
-        """Cria gráfico de barras para análise de desempenho"""
-        if 'Responsavel' not in df.columns:
-            return None
-            
-        df_responsavel = (
-            df.drop_duplicates(subset=['Responsavel', 'Incidente'])
-            .groupby(['Responsavel', 'Status'])
-            .size()
-            .unstack(fill_value=0)
-        )
-        
-        df_responsavel['Total'] = df_responsavel.sum(axis=1)
-        df_responsavel['Percentual Resolvidos'] = (
-            df_responsavel.get('Resolvido', 0) / df_responsavel['Total']
-        ) * 100
-        
-        df_responsavel = df_responsavel.sort_values(
-            by='Total', ascending=False
-        ).reset_index()
-        
-        fig = go.Figure()
-        
-        for data, name, color in [
-            (df_responsavel['Total'], 'Total', 'lightblue'),
-            (df_responsavel['Resolvido'], 'Resolvidos', 'lightgreen')
-        ]:
-            fig.add_trace(go.Bar(
-                x=df_responsavel['Responsavel'],
-                y=data,
-                name=name,
-                marker_color=color,
-                text=data,
-                textposition='inside'
-            ))
-            
-        for i in range(len(df_responsavel)):
-            fig.add_annotation(
-                x=df_responsavel['Responsavel'][i],
-                y=df_responsavel['Resolvido'][i],
-                text=f"{df_responsavel['Percentual Resolvidos'][i]:.1f}%",
-                showarrow=True,
-                arrowhead=2,
-                ax=0,
-                ay=-30,
-                font=dict(size=10)
-            )
-            
-        fig.update_layout(
-            title='Desempenho dos Responsáveis',
-            xaxis_title='Responsável',
-            yaxis_title='Quantidade',
-            barmode='group',
-            legend_title='Tipo'
-        )
-        
-        return fig
 
-class UIManager:
-    @staticmethod
-    def aplicar_estilos():
-        """Aplica estilos CSS personalizados"""
-        st.markdown("""
-            <style>
-            .fixed-header {
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                background-color: white;
-                z-index: 1;
-                border-bottom: 1px solid #e0e0e0;
-                padding: 10px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-            .fixed-header h1 {
-                margin: 0;
-                font-size: 24px;
-            }
-            .fixed-header h2 {
-                margin: 0;
-                font-size: 18px;
-                color: #555;
-            }
-            .stButton button {
-                width: 100%;
-            }
-            </style>
-        """, unsafe_allow_html=True)
-    
-    @staticmethod
-    def mostrar_cabecalho():
-        """Mostra o cabeçalho fixo da aplicação"""
-        st.markdown(
-            '<div class="fixed-header">'
-            '<h1>DataPaws</h1>'
-            '<h2>Análise de Dados Consolidados - Backlog</h2>'
-            '</div>',
-            unsafe_allow_html=True
-        )
-    
-    @staticmethod
-    def mostrar_sidebar(nome_usuario: str, df: pd.DataFrame) -> List[str]:
-        """Configura e mostra a barra lateral"""
-        st.sidebar.header(f"{nome_usuario}")
-        
-        if st.sidebar.button("Logout"):
-            st.session_state.login = False
-            st.rerun()
-        
-        st.sidebar.header("Filtros por Área")
-        setores_disponiveis = df['Setor'].unique()
-        return [setor for setor in setores_disponiveis if st.sidebar.checkbox(setor, value=True)]
-    
-    @staticmethod
-    def mostrar_estatisticas(stats: Dict[str, float]):
-        """Mostra as estatísticas gerais"""
-        st.write(
-            f"**Total de Registros:** {stats['total']} "
-            f"**Resolvidos:** {stats['resolvidos']} ({stats['perc_resolvidos']:.1f}%) "
-            f"**Pendentes:** {stats['pendentes']} ({stats['
+        # Gráfico de pizza
+        if 'Responsavel' in df_filtrado.columns:
+            df_status = df_filtrado.drop_duplicates(subset=['Responsavel', 'Incidente']).groupby('Responsavel').size()            
+            total = df_status.sum()
+            percentages = df_status / total * 100
+            df_status_grouped = df_status[percentages >= 5]
+            other_count = df_status[percentages < 5].sum()
+            if other_count > 0:
+                df_status_grouped['Outros'] = other_count
+
+            # Gráfico de pizza se houver dados
+            if not df_status_grouped.empty:
+                fig_responsaveis = px.pie(
+                    df_status_grouped,
+                    names=df_status_grouped.index,
+                    values=df_status_grouped.values,
+                    title='Distribuição Backlog por Responsáveis',
+                    hole=0.3
+                )
+
+                # Adicionando rótulos de dados ao gráfico de pizza
+                fig_responsaveis.update_traces(textinfo='percent')
+
+        # Disposição dos gráficos em 3x2
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.plotly_chart(fig_incidentes, use_container_width=True)
+
+        with col2:
+            if 'Backlog' in df_filtrado.columns:
+                st.plotly_chart(fig_backlog_status, use_container_width=True)
+
+        col3, col4 = st.columns(2)
+
+        with col3:
+            if 'Responsavel' in df_filtrado.columns and 'fig_responsaveis' in locals():
+                st.plotly_chart(fig_responsaveis, use_container_width=True)
+
+        with col4:
+            st.plotly_chart(fig_desempenho, use_container_width=True)
+
+    else:
+        st.write("Nenhum registro encontrado com os filtros aplicados.")
