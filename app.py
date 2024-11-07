@@ -1,3 +1,15 @@
+"""
+Aplicação DataPaws - Análise de Dados Consolidados
+
+Este script cria uma aplicação Streamlit que realiza a análise de dados consolidados de incidentes em setores específicos. 
+O aplicativo inclui funcionalidades de login, carregamento e filtro de dados, e visualização interativa com gráficos usando Plotly.
+
+Configurações de variáveis de ambiente:
+Este script espera variáveis de ambiente para os nomes de usuário e senha para fins de autenticação, carregadas a partir de um arquivo .env.
+
+Criado em: 07/11/2024
+Autor: Francisco José Pereira
+"""
 import streamlit as st
 import pandas as pd
 import plotly.express as px
