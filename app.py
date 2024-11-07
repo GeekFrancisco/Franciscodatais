@@ -7,7 +7,7 @@ O aplicativo inclui funcionalidades de login, carregamento e filtro de dados, e 
 Configurações de variáveis de ambiente:
 Este script espera variáveis de ambiente para os nomes de usuário e senha para fins de autenticação, carregadas a partir de um arquivo .env.
 
-Criado em: 07/11/2024
+Criado em: 01/11/2024
 Autor: Francisco José Pereira
 """
 import streamlit as st
