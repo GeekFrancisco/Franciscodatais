@@ -1,16 +1,3 @@
-"""
-Aplicação DataPaws - Análise de Dados Consolidados
-
-Este script cria uma aplicação Streamlit que realiza a análise de dados consolidados de incidentes em setores específicos. 
-O aplicativo inclui funcionalidades de login, carregamento e filtro de dados, e visualização interativa com gráficos usando Plotly.
-
-Configurações de variáveis de ambiente:
-Este script espera variáveis de ambiente para os nomes de usuário e senha para fins de autenticação, carregadas a partir de um arquivo .env.
-
-Criado em: 01/11/2024
-Autor: Francisco José Pereira
-
-"""
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -23,12 +10,9 @@ load_dotenv()
 
 # Configuração da página
 if 'login' not in st.session_state or not st.session_state.login:
-    # Se não estiver logado, use o layout "centered"
     st.set_page_config(page_title="DataPaws", page_icon="Base/IMG/Designer.jpeg", layout="centered")
 else:
-    # Se estiver logado, use o layout "wide"
     st.set_page_config(page_title="DataPaws", page_icon="Base/IMG/Designer.jpeg", layout="wide")
-
 
 # Carregar credenciais do .env
 usuarios = {
@@ -55,7 +39,6 @@ if 'login' not in st.session_state:
     st.session_state.login = False
 
 if not st.session_state.login:
-    # Tela de login
     st.markdown('<div class="login">', unsafe_allow_html=True)
     st.markdown('<h1>DataPaws</h1>', unsafe_allow_html=True)
 
@@ -75,7 +58,6 @@ if not st.session_state.login:
         else:
             st.error("Usuário ou senha incorretos.")
 else:
-    # Estilo para cabeçalho fixo
     st.markdown("""
         <style>
         .fixed-header {
@@ -103,11 +85,9 @@ else:
         </style>
     """, unsafe_allow_html=True)
 
-    # Cabeçalho fixo
     st.markdown('<div class="fixed-header"><h1>DataPaws</h1><h2>Análise de Dados Consolidados - Backlog</h2><div>', unsafe_allow_html=True)
     st.sidebar.header(f"{st.session_state.nome_usuario} ")
-    
-    # Botão de logout ao lado do nome
+
     if st.sidebar.button("Logout"):
         st.session_state.login = False
         st.success("Logout realizado com sucesso!")
@@ -119,41 +99,40 @@ else:
     df_spn = df_dados['SPN']
     df_iti = df_dados['ITI']
 
-    # Verificar se as colunas necessárias estão presentes
     if 'Setor' not in df_spn.columns or 'Setor' not in df_iti.columns:
         st.error("A coluna 'Setor' não foi encontrada em uma das abas. Verifique os nomes das colunas no arquivo.")
         st.stop()
 
-    # Combina os dados e adiciona uma coluna para identificar a aba de origem
     df_spn['Aba'] = 'SPN'
     df_iti['Aba'] = 'ITI'
     df_consolidado = pd.concat([df_spn, df_iti], ignore_index=True)
 
     # Barra lateral para filtros
-    st.sidebar.header("Filtros por Área")
+    st.sidebar.header("Filtros")
 
-    # Filtro de Setor usando caixas de seleção
+    # Filtro de Setor com caixas de seleção
     setores_disponiveis = df_consolidado['Setor'].unique()
-    setores_selecionados = [setor for setor in setores_disponiveis if st.sidebar.checkbox(setor, value=True)]
-
-    # Aplicar filtro de setor ao DataFrame
-    df_filtrado = df_consolidado[df_consolidado['Setor'].isin(setores_selecionados)]
+    setores_selecionados = st.sidebar.multiselect("Setores", setores_disponiveis, default=setores_disponiveis)
 
     # Exibir título da página principal
     st.title("Análise de Dados Consolidados - Backlog")
 
-    # Exibir total de registros após aplicação dos filtros
+    # Aplicar filtros ao DataFrame
+    df_filtrado = df_consolidado[df_consolidado['Setor'].isin(setores_selecionados)]
+
+    # Exibir o número de registros após a filtragem
     total_registros = len(df_filtrado)
     total_resolvidos = len(df_filtrado[df_filtrado['Status'] == 'Resolvido'])
     total_pendentes = total_registros - total_resolvidos
 
-    # Cálculo das porcentagens
+    # Exibir totais e porcentagens
     percentual_resolvidos = (total_resolvidos / total_registros * 100) if total_registros > 0 else 0
     percentual_pendentes = (total_pendentes / total_registros * 100) if total_registros > 0 else 0
 
     st.write(f"**Total de Registros:** {total_registros} "
-             f"**Resolvidos:** {total_resolvidos} ({percentual_resolvidos:.1f}%) "
-             f"**Pendentes:** {total_pendentes} ({percentual_pendentes:.1f}%)")
+            f"**Resolvidos:** {total_resolvidos} ({percentual_resolvidos:.1f}%) "
+            f"**Pendentes:** {total_pendentes} ({percentual_pendentes:.1f}%)")
+
 
     if not df_filtrado.empty:
         # Total de incidentes por setor
@@ -165,15 +144,17 @@ else:
         # Criar gráfico de barras
         fig_incidentes = go.Figure()
 
+        # Adicionar a barra de 'Pendentes' (à direita)
         fig_incidentes.add_trace(go.Bar(
-            x=df_total_sector.index,
-            y=df_total_sector.values,
-            name='Total',
-            marker_color='skyblue',
-            text=[f'{val} ({(val / df_total_sector.sum() * 100):.1f}%)' for val in df_total_sector.values],
+            x=df_unresolved_sector.index,
+            y=df_unresolved_sector.values,
+            name='Pendentes',
+            marker_color='salmon',
+            text=[f'{val} ({(val / df_total_sector.sum() * 100):.1f}%)' for val in df_unresolved_sector.values],
             textposition='inside'
         ))
 
+        # Adicionar a barra de 'Resolvidos' (à esquerda de 'Pendentes')
         fig_incidentes.add_trace(go.Bar(
             x=df_resolved_sector.index,
             y=df_resolved_sector.reindex(df_total_sector.index, fill_value=0).values,
@@ -183,12 +164,13 @@ else:
             textposition='inside'
         ))
 
+        # Adicionar a barra de 'Total' (à esquerda de 'Resolvidos')
         fig_incidentes.add_trace(go.Bar(
-            x=df_unresolved_sector.index,
-            y=df_unresolved_sector.values,
-            name='Pendentes',
-            marker_color='salmon',
-            text=[f'{val} ({(val / df_total_sector.sum() * 100):.1f}%)' for val in df_unresolved_sector.values],
+            x=df_total_sector.index,
+            y=df_total_sector.values,
+            name='Total',
+            marker_color='skyblue',
+            text=[f'{val} ({(val / df_total_sector.sum() * 100):.1f}%)' for val in df_total_sector.values],
             textposition='inside'
         ))
 
@@ -200,6 +182,7 @@ else:
             legend_title='Tipo de Incidente',
             xaxis_tickangle=-45
         )
+
 
         # Gráfico de backlog por status
         if 'Backlog' in df_filtrado.columns:
@@ -253,19 +236,11 @@ else:
             df_responsavel_grouped['Total'] = df_responsavel_grouped.sum(axis=1)
             df_responsavel_grouped['Percentual Resolvidos'] = (df_responsavel_grouped.get('Resolvido', 0) / df_responsavel_grouped['Total']) * 100
             df_responsavel_grouped = df_responsavel_grouped.reset_index()
-            
-            # Ordenar o DataFrame pelo total em ordem decrescente
-            df_responsavel_grouped = df_responsavel_grouped.sort_values(by='Total', ascending=False)
 
-            fig_desempenho.add_trace(go.Bar(
-                x=df_responsavel_grouped['Responsavel'],
-                y=df_responsavel_grouped['Total'],
-                name='Total',
-                marker_color='lightblue',
-                text=df_responsavel_grouped['Total'],
-                textposition='inside'
-            ))
+            # Ordenar o DataFrame pelo total em ordem crescente
+            df_responsavel_grouped = df_responsavel_grouped.sort_values(by='Total', ascending=True)
 
+            # Adicionar o gráfico de 'Resolvido' primeiro (barra à esquerda)
             fig_desempenho.add_trace(go.Bar(
                 x=df_responsavel_grouped['Responsavel'],
                 y=df_responsavel_grouped['Resolvido'],
@@ -275,14 +250,25 @@ else:
                 textposition='inside'
             ))
 
+            # Adicionar o gráfico de 'Total' depois (barra à direita)
+            fig_desempenho.add_trace(go.Bar(
+                x=df_responsavel_grouped['Responsavel'],
+                y=df_responsavel_grouped['Total'],
+                name='Total',
+                marker_color='lightblue',
+                text=df_responsavel_grouped['Total'],
+                textposition='inside'
+            ))
+
             fig_desempenho.update_layout(
                 title='Desempenho dos Responsáveis',
                 xaxis_title='Responsável',
                 yaxis_title='Quantidade',
-                barmode='group',
+                barmode='group',  # Modo de agrupamento
                 legend_title='Tipo'
             )
 
+            # Adicionar anotações com o percentual de resolvidos
             for i in range(len(df_responsavel_grouped)):
                 fig_desempenho.add_annotation(
                     x=df_responsavel_grouped['Responsavel'][i],
