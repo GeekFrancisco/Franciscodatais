@@ -9,6 +9,7 @@ Este script espera variáveis de ambiente para os nomes de usuário e senha para
 
 Criado em: 01/11/2024
 Autor: Francisco José Pereira
+
 """
 import streamlit as st
 import pandas as pd
