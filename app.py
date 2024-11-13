@@ -86,8 +86,9 @@ else:
     """, unsafe_allow_html=True)
 
     st.markdown('<div class="fixed-header"><h1>DataPaws</h1><h2>Análise de Dados Consolidados - Backlog</h2><div>', unsafe_allow_html=True)
-    st.sidebar.header(f"{st.session_state.nome_usuario} ")
+    st.sidebar.header(f"Bem-vindo, {st.session_state.nome_usuario} ")
 
+     # Sidebar
     if st.sidebar.button("Logout"):
         st.session_state.login = False
         st.success("Logout realizado com sucesso!")
@@ -114,8 +115,19 @@ else:
     setores_disponiveis = df_consolidado['Setor'].unique()
     setores_selecionados = st.sidebar.multiselect("Setores", setores_disponiveis, default=setores_disponiveis)
 
-    # Exibir título da página principal
-    st.title("Análise de Dados Consolidados - Backlog")
+    # Definir o título dinamicamente com base nos setores selecionados e adicionar cor para destaque
+    titulo_base = "Análise de Dados Consolidados - Backlog"
+    if setores_selecionados == ["SPN"]:
+        titulo = f"{titulo_base} - <span style='color: #1f77b4;'>SPN</span>"
+    elif setores_selecionados == ["ITI"]:
+        titulo = f"{titulo_base} - <span style='color: #ff7f0e;'>ITI</span>"
+    elif set(setores_selecionados) == set(["SPN", "ITI"]):
+        titulo = f"{titulo_base} - <span style='color: #2ca02c;'>Consolidado</span>"
+    else:
+        titulo = titulo_base  # Caso nenhum setor esteja selecionado (opcional)
+
+    # Exibir o título com estilo personalizado
+    st.markdown(f"<h1>{titulo}</h1>", unsafe_allow_html=True)
 
     # Aplicar filtros ao DataFrame
     df_filtrado = df_consolidado[df_consolidado['Setor'].isin(setores_selecionados)]
@@ -132,7 +144,6 @@ else:
     st.write(f"**Total de Registros:** {total_registros} "
             f"**Resolvidos:** {total_resolvidos} ({percentual_resolvidos:.1f}%) "
             f"**Pendentes:** {total_pendentes} ({percentual_pendentes:.1f}%)")
-
 
     if not df_filtrado.empty:
         # Total de incidentes por setor
@@ -151,7 +162,8 @@ else:
             name='Pendentes',
             marker_color='salmon',
             text=[f'{val} ({(val / df_total_sector.sum() * 100):.1f}%)' for val in df_unresolved_sector.values],
-            textposition='inside'
+            textposition='inside',
+            textfont=dict(size=14)  # Aumenta o tamanho da fonte dos rótulos
         ))
 
         # Adicionar a barra de 'Resolvidos' (à esquerda de 'Pendentes')
@@ -161,7 +173,8 @@ else:
             name='Resolvidos',
             marker_color='lightgreen',
             text=[f'{val} ({(val / df_total_sector.sum() * 100):.1f}%)' for val in df_resolved_sector.reindex(df_total_sector.index, fill_value=0).values],
-            textposition='inside'
+            textposition='inside',
+            textfont=dict(size=14)  # Aumenta o tamanho da fonte dos rótulos
         ))
 
         # Adicionar a barra de 'Total' (à esquerda de 'Resolvidos')
@@ -171,7 +184,8 @@ else:
             name='Total',
             marker_color='skyblue',
             text=[f'{val} ({(val / df_total_sector.sum() * 100):.1f}%)' for val in df_total_sector.values],
-            textposition='inside'
+            textposition='inside',
+            textfont=dict(size=14)  # Aumenta o tamanho da fonte dos rótulos
         ))
 
         fig_incidentes.update_layout(
@@ -226,7 +240,7 @@ else:
                         arrowhead=2,
                         ax=0,
                         ay=-10,
-                        font=dict(size=10)
+                        font=dict(size=14)
                     )
 
         # Gráfico de desempenho por responsável
@@ -247,7 +261,8 @@ else:
                 name='Resolvidos',
                 marker_color='lightgreen',
                 text=df_responsavel_grouped['Resolvido'],
-                textposition='inside'
+                textposition='inside',
+                textfont=dict(size=15)  # Fonte maior para os rótulos de texto nas barras
             ))
 
             # Adicionar o gráfico de 'Total' depois (barra à direita)
@@ -257,7 +272,8 @@ else:
                 name='Total',
                 marker_color='lightblue',
                 text=df_responsavel_grouped['Total'],
-                textposition='inside'
+                textposition='inside',
+                textfont=dict(size=15)  # Fonte maior para os rótulos de texto nas barras
             ))
 
             fig_desempenho.update_layout(
@@ -278,7 +294,7 @@ else:
                     arrowhead=2,
                     ax=0,
                     ay=-30,
-                    font=dict(size=10)
+                    font=dict(size=14)
                 )
 
         # Gráfico de pizza
@@ -302,7 +318,9 @@ else:
                 )
 
                 # Adicionando rótulos de dados ao gráfico de pizza
-                fig_responsaveis.update_traces(textinfo='percent')
+                fig_responsaveis.update_traces(textposition='inside', 
+                                               textinfo='percent',
+                                               textfont=dict(size=14))
 
         # Disposição dos gráficos em 3x2
         col1, col2 = st.columns(2)
