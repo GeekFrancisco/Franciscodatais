@@ -132,6 +132,9 @@ else:
     # Aplicar filtros ao DataFrame
     df_filtrado = df_consolidado[df_consolidado['Setor'].isin(setores_selecionados)]
 
+    # Limpar espaços em branco ao redor do nome de 'Responsavel'
+    df_filtrado['Responsavel'] = df_filtrado['Responsavel'].str.strip()
+
     # Exibir o número de registros após a filtragem
     total_registros = len(df_filtrado)
     total_resolvidos = len(df_filtrado[df_filtrado['Status'] == 'Resolvido'])
@@ -142,8 +145,8 @@ else:
     percentual_pendentes = (total_pendentes / total_registros * 100) if total_registros > 0 else 0
 
     st.write(f"**Total de Registros:** {total_registros} "
-            f"**Resolvidos:** {total_resolvidos} ({percentual_resolvidos:.1f}%) "
-            f"**Pendentes:** {total_pendentes} ({percentual_pendentes:.1f}%)")
+         f"**Resolvidos:** {total_resolvidos} ({percentual_resolvidos:.1f}%) "
+         f"**Pendentes:** {total_pendentes} ({percentual_pendentes:.1f}%)")
 
     if not df_filtrado.empty:
         # Total de incidentes por setor
