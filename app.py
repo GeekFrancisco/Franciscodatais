@@ -212,7 +212,7 @@ else:
             
             backlog_por_status['Total'] = backlog_por_status.sum(axis=1, numeric_only=True)
 
-            colors = ['blue', 'red', 'green'] 
+            colors = ['lightgreen', 'red', 'Skyblue'] 
             
             fig_backlog_status = px.line(
                 backlog_por_status,
