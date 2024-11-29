@@ -5,11 +5,11 @@ import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages
 
 # Caminho para a planilha na pasta raiz do projeto
-file_path = 'Base\consolidado.xlsx'
+file_path = 'Base\Backlog_8.xlsx'
 
 # Tentar carregar a aba 'SPN' da planilha "Backlog.xlsx"
 try:
-    df = pd.read_excel(file_path, sheet_name='SPN')
+    df = pd.read_excel(file_path, sheet_name='ITI')
 except FileNotFoundError:
     print(f"Erro: O arquivo '{file_path}' não foi encontrado.")
     exit()
@@ -25,14 +25,14 @@ except Exception as e:
     exit()
 
 # Criar um PDF para salvar os gráficos
-pdf_path = "Graficos_Backlog_SPN_Semana_cons.pdf"
+pdf_path = "Graficos_Backlog_ITI_Semana_08.pdf"
 pdf = PdfPages(pdf_path)
 
 # Configurar o layout da página com vários gráficos (ex: 2 linhas e 2 colunas)
 fig, axs = plt.subplots(2, 2, figsize=(12, 10))  # 2x2 grid de gráficos
 
 # Adicionar título global à página
-fig.suptitle('Análise Backlog SPN - Semana 28/10 a 01/11', fontsize=16)
+fig.suptitle('Análise Backlog ITI - Semana 25 a 29/11', fontsize=16)
 
 # Função auxiliar para adicionar rótulos de dados
 def add_labels_bars(ax):
@@ -47,7 +47,7 @@ def add_labels_line(ax, x_data, y_data):
 
 # Gráfico 1: Quantidade de incidentes por setor (total e resolvidos)
 df_total_sector = df['Setor'].value_counts()  # Total de incidentes por setor
-df_resolved = df[df['Status'] == 'Concluido']  # Filtrar apenas os resolvidos
+df_resolved = df[df['Status'] == 'Resolvido']  # Filtrar apenas os resolvidos
 df_resolved_sector = df_resolved['Setor'].value_counts()  # Total de incidentes resolvidos por setor
 
 # Calcular o total de incidentes não resolvidos
@@ -94,17 +94,17 @@ for i, unresolved in enumerate(df_unresolved_sector.values):
 backlog_by_date = df.groupby(df['Backlog'].dt.to_period('M')).size()
 
 # Backlog resolvido
-resolved_by_date = df[df['Status'] == 'Concluido'].groupby(df['Backlog'].dt.to_period('M')).size()
+resolved_by_date = df[df['Status'] == 'Resolvido'].groupby(df['Backlog'].dt.to_period('M')).size()
 
 # Backlog pendente (não resolvido)
-pending_by_date = df[df['Status'] != 'Concluido'].groupby(df['Backlog'].dt.to_period('M')).size()
+pending_by_date = df[df['Status'] != 'Resolvido'].groupby(df['Backlog'].dt.to_period('M')).size()
 
 # Reindexar os dados resolvidos e pendentes para alinhar com o backlog total, preenchendo valores faltantes com 0
 resolved_by_date = resolved_by_date.reindex(backlog_by_date.index, fill_value=0)
 pending_by_date = pending_by_date.reindex(backlog_by_date.index, fill_value=0)
 
 # Plotar a evolução do backlog
-axs[0, 1].plot(backlog_by_date.index.astype(str), backlog_by_date.values, marker='o', color='orange', label='Total')
+axs[0, 1].plot(backlog_by_date.index.astype(str), backlog_by_date.values, marker='o', color='Skyblue', label='Total')
 axs[0, 1].plot(resolved_by_date.index.astype(str), resolved_by_date.values, marker='o', color='lightgreen', label='Resolvidos')
 axs[0, 1].plot(pending_by_date.index.astype(str), pending_by_date.values, marker='o', color='red', label='Pendentes')  # Linha para pendentes
 
@@ -145,56 +145,120 @@ if not df_status_grouped.empty:
 else:
     axs[1, 0].text(0.5, 0.5, 'Nenhum dado disponível', fontsize=12, ha='center', va='center')
 
-
-# Gráfico 4: Quantidade de incidentes por responsável (gráfico de barras em pé)
+# Gráfico 4: Desempenho dos Responsáveis
+# Contagem de incidentes por responsável
 df_responsavel = df['Responsavel'].value_counts()
 resolved_by_responsavel = df[df['Status'] == 'Resolvido']['Responsavel'].value_counts()
+pending_by_responsavel = df[df['Status'] != 'Resolvido']['Responsavel'].value_counts()
 
-# Calculando o percentual de resolvidos
-percent_resolved = (resolved_by_responsavel / df_responsavel) * 100
-percent_resolved = percent_resolved.fillna(0)  # Preencher NaN com 0
+# Verificar se o número de responsáveis é maior que 5
+if len(df_responsavel) > 5:
+    # Separar os 5 principais responsáveis
+    responsaveis_principais = df_responsavel.head(5)
+    
+    # Agrupar o restante em "Outros"
+    responsaveis_outros = df_responsavel.iloc[5:]
+    total_outros = responsaveis_outros.sum()  # Soma total de incidentes na categoria "Outros"
+    resolved_outros = resolved_by_responsavel.reindex(responsaveis_outros.index, fill_value=0).sum()  # Soma de resolvidos na categoria "Outros"
+    pending_outros = pending_by_responsavel.reindex(responsaveis_outros.index, fill_value=0).sum()  # Soma de pendentes na categoria "Outros"
+    
+    # Adicionar "Outros" aos principais
+    responsaveis_principais['Outros'] = total_outros
+    resolved_responsaveis_principais = resolved_by_responsavel.reindex(responsaveis_principais.index, fill_value=0)
+    resolved_responsaveis_principais['Outros'] = resolved_outros
+    pending_responsaveis_principais = pending_by_responsavel.reindex(responsaveis_principais.index, fill_value=0)
+    pending_responsaveis_principais['Outros'] = pending_outros
+else:
+    # Caso o número de responsáveis seja menor ou igual a 5, usamos todos
+    responsaveis_principais = df_responsavel
+    resolved_responsaveis_principais = resolved_by_responsavel.reindex(responsaveis_principais.index, fill_value=0)
+    pending_responsaveis_principais = pending_by_responsavel.reindex(responsaveis_principais.index, fill_value=0)
 
 # Configurar as posições das barras
-bar_width = 0.4  # Largura das barras
-positions = range(len(df_responsavel.index))
+bar_width = 0.4
+positions = range(len(responsaveis_principais.index))
 
 # Plotar as barras para a quantidade total de incidentes
-total_bars = axs[1, 1].bar(positions, df_responsavel.values, width=bar_width, color='lightseagreen', label='Total')
+total_bars = axs[1, 1].bar(
+    positions,
+    responsaveis_principais.values,
+    width=bar_width,
+    color='Skyblue',
+    label='Total'
+)
 
-# Plotar as barras para a quantidade de incidentes resolvidos
-resolved_bars = axs[1, 1].bar([p + bar_width for p in positions],
-                               resolved_by_responsavel.reindex(df_responsavel.index, fill_value=0).values,
-                               width=bar_width, color='lightcoral', label='Resolvidos')
+# Plotar a parte resolvida na barra de resolvidos
+resolved_bars = axs[1, 1].bar(
+    [p + bar_width for p in positions],
+    resolved_responsaveis_principais.values,
+    width=bar_width,
+    color='lightgreen',
+    label='Resolvidos'
+)
+
+# Plotar a parte pendente na barra de resolvidos (empilhada)
+pending_bars = axs[1, 1].bar(
+    [p + bar_width for p in positions],
+    pending_responsaveis_principais.values,
+    bottom=resolved_responsaveis_principais.values,
+    width=bar_width,
+    color='lightcoral',
+    label='Pendentes'
+)
 
 # Configurações do gráfico
 axs[1, 1].set_title('Desempenho dos Responsáveis')
 axs[1, 1].set_xlabel('Responsáveis')
 axs[1, 1].set_ylabel('Quantidade')
-axs[1, 1].tick_params(axis='x', rotation=45)  # Rotacionar rótulos do eixo x
-axs[1, 1].set_xticks([p + bar_width / 2 for p in positions])  # Ajustar as posições dos rótulos do eixo x
-axs[1, 1].set_xticklabels(df_responsavel.index)  # Configurar os rótulos do eixo x
+axs[1, 1].tick_params(axis='x', rotation=45)
+axs[1, 1].set_xticks([p + bar_width / 2 for p in positions])
+axs[1, 1].set_xticklabels(responsaveis_principais.index)
 
 # Adicionar valores dentro das barras de totais
 for i, bar in enumerate(total_bars):
     yval = bar.get_height()
-    # Colocar apenas o valor dentro da barra
-    axs[1, 1].text(bar.get_x() + bar.get_width() / 2, yval / 2, f'{yval}', 
-                   ha='center', va='center', color='black')
+    axs[1, 1].text(
+        bar.get_x() + bar.get_width() / 2,
+        yval / 2,
+        f'{yval}',
+        ha='center',
+        va='center',
+        color='black'
+    )
 
 # Adicionar valores e percentuais dentro das barras de resolvidos
-for i, bar in enumerate(resolved_bars):
-    yval = bar.get_height()
-    total_incidents = df_responsavel.values[i]  # Total de incidentes para o responsável atual
+for i, (bar_resolved, bar_pending) in enumerate(zip(resolved_bars, pending_bars)):
+    resolved_height = bar_resolved.get_height()
+    pending_height = bar_pending.get_height()
+    total_incidents = responsaveis_principais.values[i]
 
-    # Calcular percentual apenas se houver incidentes resolvidos
-    if yval > 0:
-        percent = (yval / total_incidents) * 100
-        # Colocar o valor e o percentual dentro da barra
-        axs[1, 1].text(bar.get_x() + bar.get_width() / 2, yval / 2, f'{yval}\n({percent:.1f}%)', 
-                       ha='center', va='center', color='black')
+    # Adicionar texto para resolvidos
+    if resolved_height > 0:
+        percent_resolved = (resolved_height / total_incidents) * 100
+        axs[1, 1].text(
+            bar_resolved.get_x() + bar_resolved.get_width() / 2,
+            resolved_height / 2,
+            f'{int(resolved_height)}\n({percent_resolved:.1f}%)',
+            ha='center',
+            va='center',
+            color='black'
+        )
+
+    # Adicionar texto para pendentes
+    if pending_height > 0:
+        percent_pending = (pending_height / total_incidents) * 100
+        axs[1, 1].text(
+            bar_pending.get_x() + bar_pending.get_width() / 2,
+            resolved_height + pending_height / 2,
+            f'{int(pending_height)}\n({percent_pending:.1f}%)',
+            ha='center',
+            va='center',
+            color='black'
+        )
 
 # Adicionar legenda ao gráfico
-axs[1, 1].legend()  # Adicionar legenda apenas uma vez
+axs[1, 1].legend()
+
 
 # Ajustar espaçamento entre os gráficos e o título global
 plt.subplots_adjust(wspace=0.4, hspace=0.5)  # Ajustar espaçamento horizontal e vertical
