@@ -5,7 +5,8 @@ import os
 diretorio = r'C:\Users\franciscoj\Python_Initial\Pyhton_Web\Base'
 
 # Lista com os nomes das planilhas
-planilhas = ['Backlog.xlsx', 'Backlog_2.xlsx', 'Backlog_3.xlsx', 'Backlog_4.xlsx', 'Backlog_5.xlsx', 'Backlog_6.xlsx', 'Backlog_7.xlsx', 'Backlog_8.xlsx']
+planilhas = ['Backlog.xlsx', 'Backlog_2.xlsx', 'Backlog_3.xlsx', 'Backlog_4.xlsx', 'Backlog_5.xlsx', 'Backlog_6.xlsx', 'Backlog_7.xlsx', 
+             'Backlog_8.xlsx', 'Backlog_9.xlsx', 'Backlog_10.xlsx']
 
 # DataFrames para armazenar os dados consolidados das abas SPN e ITI
 df_spn_consolidado = pd.DataFrame(columns=['Setor', 'Responsavel', 'Semana', 'Inicio_Semana', 'Final_Semana', 'Incidente', 'Backlog', 'Data', 'Status'])
