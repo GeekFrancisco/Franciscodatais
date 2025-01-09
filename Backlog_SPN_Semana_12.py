@@ -5,11 +5,11 @@ import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages
 
 # Caminho para a planilha na pasta raiz do projeto
-file_path = 'Base\Backlog_8.xlsx'
+file_path = 'Base\Backlog.xlsx'
 
 # Tentar carregar a aba 'SPN' da planilha "Backlog.xlsx"
 try:
-    df = pd.read_excel(file_path, sheet_name='ITI')
+    df = pd.read_excel(file_path, sheet_name='SPN')
 except FileNotFoundError:
     print(f"Erro: O arquivo '{file_path}' não foi encontrado.")
     exit()
@@ -25,14 +25,14 @@ except Exception as e:
     exit()
 
 # Criar um PDF para salvar os gráficos
-pdf_path = "Graficos_Backlog_ITI_Semana_08.pdf"
+pdf_path = "Graficos_Backlog_SPN_Semana_01_2025.pdf"
 pdf = PdfPages(pdf_path)
 
 # Configurar o layout da página com vários gráficos (ex: 2 linhas e 2 colunas)
 fig, axs = plt.subplots(2, 2, figsize=(12, 10))  # 2x2 grid de gráficos
 
 # Adicionar título global à página
-fig.suptitle('Análise Backlog ITI - Semana 25 a 29/11', fontsize=16)
+fig.suptitle('Análise Backlog SPN - Semana 06 a 10/01', fontsize=16)
 
 # Função auxiliar para adicionar rótulos de dados
 def add_labels_bars(ax):

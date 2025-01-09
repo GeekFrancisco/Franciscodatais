@@ -58,37 +58,12 @@ if not st.session_state.login:
         else:
             st.error("Usuário ou senha incorretos.")
 else:
-    st.markdown("""
-        <style>
-        .fixed-header {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            background-color: white;
-            z-index: 1;
-            border-bottom: 1px solid #e0e0e0;
-            padding: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .fixed-header h1 {
-            margin: 0;
-            font-size: 24px;
-        }
-        .fixed-header h2 {
-            margin: 0;
-            font-size: 18px;
-            color: #555;
-        }
-        </style>
-    """, unsafe_allow_html=True)
+    st.markdown("""<style>.fixed-header {position: fixed; top: 0; left: 0; right: 0; background-color: white; z-index: 1; border-bottom: 1px solid #e0e0e0; padding: 10px; display: flex; justify-content: space-between; align-items: center;} .fixed-header h1 {margin: 0; font-size: 24px;} .fixed-header h2 {margin: 0; font-size: 18px; color: #555;} </style>""", unsafe_allow_html=True)
 
     st.markdown('<div class="fixed-header"><h1>DataPaws</h1><h2>Análise de Dados Consolidados - Backlog</h2><div>', unsafe_allow_html=True)
     st.sidebar.header(f"Bem-vindo, {st.session_state.nome_usuario} ")
 
-     # Sidebar
+    # Sidebar
     if st.sidebar.button("Logout"):
         st.session_state.login = False
         st.success("Logout realizado com sucesso!")
@@ -129,25 +104,31 @@ else:
     # Exibir o título com estilo personalizado
     st.markdown(f"<h1>{titulo}</h1>", unsafe_allow_html=True)
 
-    # Aplicar filtros ao DataFrame
-    df_filtrado = df_consolidado[df_consolidado['Setor'].isin(setores_selecionados)]
+    # Adicionar coluna de 'Ano' ao DataFrame, caso ainda não tenha
+    df_consolidado['Ano'] = pd.to_datetime(df_consolidado['Data'], dayfirst=True).dt.year  # Corrigido
 
+    # Aplicar filtro de ano ao DataFrame
+    df_filtrado = df_consolidado[df_consolidado['Setor'].isin(setores_selecionados)]
+    
     # Limpar espaços em branco ao redor do nome de 'Responsavel'
     df_filtrado['Responsavel'] = df_filtrado['Responsavel'].str.strip()
 
-    # Exibir o número de registros após a filtragem
+    # Contagem de status
+    status_counts = df_filtrado['Status'].value_counts()
     total_registros = len(df_filtrado)
-    total_resolvidos = len(df_filtrado[df_filtrado['Status'] == 'Resolvido'])
-    total_pendentes = total_registros - total_resolvidos
+    
+    # Contar Resolvido e Pendente
+    total_resolvidos = status_counts.get('Resolvido', 0)
+    total_pendentes = status_counts.get('Pendente', 0)
 
     # Exibir totais e porcentagens
     percentual_resolvidos = (total_resolvidos / total_registros * 100) if total_registros > 0 else 0
     percentual_pendentes = (total_pendentes / total_registros * 100) if total_registros > 0 else 0
 
     st.write(f"**Total de Registros:** {total_registros} "
-         f"**Resolvidos:** {total_resolvidos} ({percentual_resolvidos:.1f}%) "
-         f"**Pendentes:** {total_pendentes} ({percentual_pendentes:.1f}%)")
-
+             f"**Resolvidos:** {total_resolvidos} ({percentual_resolvidos:.1f}%) "
+             f"**Pendentes:** {total_pendentes} ({percentual_pendentes:.1f}%)")
+    
     if not df_filtrado.empty:
         # Total de incidentes por setor
         df_total_sector = df_filtrado['Setor'].value_counts()
@@ -248,6 +229,7 @@ else:
 
         # Gráfico de desempenho por responsável
         fig_desempenho = go.Figure()
+        
         if 'Responsavel' in df_filtrado.columns:
             df_responsavel_grouped = df_filtrado.drop_duplicates(subset=['Responsavel', 'Incidente']).groupby(['Responsavel', 'Status']).size().unstack(fill_value=0)
             df_responsavel_grouped['Total'] = df_responsavel_grouped.sum(axis=1)
