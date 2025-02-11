@@ -181,29 +181,43 @@ else:
             xaxis_tickangle=-45
         )
 
-
-        # Gráfico de backlog por status
+        ###### Gráfico de backlog por status ######
         if 'Backlog' in df_filtrado.columns:
+            # Converter Backlog para datetime para garantir a ordenação correta
+            df_filtrado['Backlog'] = pd.to_datetime(df_filtrado['Backlog'], format='%m/%Y')
+
             backlog_por_status = (
                 df_filtrado.groupby(['Backlog', 'Status'])
                 .size()
                 .unstack(fill_value=0)
                 .reset_index()
             )
-            
+
+            # Ordenar pelo Backlog em ordem crescente
+            backlog_por_status = backlog_por_status.sort_values(by='Backlog')
+
+            # Criar uma coluna de string formatada para exibição no gráfico
+            backlog_por_status['Backlog_str'] = backlog_por_status['Backlog'].dt.strftime('%B/%Y')
+
+            # Ordenar os meses na ordem desejada (da direita para a esquerda)
+            backlog_por_status = backlog_por_status.sort_values(by='Backlog', ascending=True)
+
             backlog_por_status['Total'] = backlog_por_status.sum(axis=1, numeric_only=True)
 
-            colors = ['lightgreen', 'red', 'Skyblue'] 
-            
+            colors = ['lightgreen', 'red', 'Skyblue']  
+
             fig_backlog_status = px.line(
                 backlog_por_status,
-                x='Backlog',
+                x='Backlog_str',  # Usamos a versão formatada da data
                 y=['Resolvido', 'Pendente', 'Total'],
-                labels={'Backlog': 'Mês/Ano', 'value': 'Contagem', 'variable': 'Status'},
+                labels={'Backlog_str': 'Mês/Ano', 'value': 'Contagem', 'variable': 'Status'},
                 title="Distribuição de Incidentes por Status",
                 markers=True,
                 color_discrete_sequence=colors
             )
+
+            # Inverter o eixo X para mostrar da direita para a esquerda
+            fig_backlog_status.update_layout(xaxis=dict(categoryorder='array', categoryarray=backlog_por_status['Backlog_str']))
 
             # Manter a legenda
             fig_backlog_status.update_layout(legend_title_text='Status')
@@ -215,7 +229,7 @@ else:
 
             # Adicionando anotações para mostrar os valores
             for trace in fig_backlog_status.data:
-                for x, y in zip(backlog_por_status['Backlog'], trace.y):
+                for x, y in zip(backlog_por_status['Backlog_str'], trace.y):
                     fig_backlog_status.add_annotation(
                         x=x,
                         y=y,
@@ -226,6 +240,7 @@ else:
                         ay=-10,
                         font=dict(size=14)
                     )
+
 
         # Gráfico de desempenho por responsável
         fig_desempenho = go.Figure()
