@@ -4,6 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import os
 from dotenv import load_dotenv
+import time
 
 # Carregar variáveis de ambiente
 load_dotenv()
@@ -81,6 +82,24 @@ else:
     df_spn['Aba'] = 'SPN'
     df_iti['Aba'] = 'ITI'
     df_consolidado = pd.concat([df_spn, df_iti], ignore_index=True)
+
+   # Lista de filtros para alternar automaticamente (exemplo: alternar setores)
+    setores_disponiveis = df_consolidado['Setor'].unique()
+    setores_variados = [
+        setores_disponiveis,  # Todos os setores
+        ['SPN'],  # Somente SPN
+        ['ITI'],  # Somente ITI
+        ['SPN', 'ITI'],  # SPN e ITI juntos
+    ]
+
+    # Definir o índice do filtro a ser alternado
+    if 'filtro_index' not in st.session_state:
+        st.session_state.filtro_index = 0  # Começa com o primeiro filtro
+    
+    filtro_index = st.session_state.filtro_index
+    st.session_state.filtro_index = (filtro_index + 1) % len(setores_variados)
+    
+    setores_selecionados = setores_variados[filtro_index]
 
     # Barra lateral para filtros
     st.sidebar.header("Filtros")
