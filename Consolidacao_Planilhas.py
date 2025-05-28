@@ -29,34 +29,31 @@ def limpar_colunas(df):
         df[coluna] = df[coluna].apply(lambda x: re.sub(r'[\n\t\r\x0b\x0c]', '', x) if isinstance(x, str) else x)  # Remove caracteres invisíveis
     return df
 
-# Loop para ler cada planilha e suas abas
 for planilha in planilhas:
-    # Monta o caminho completo do arquivo
     caminho_completo = os.path.join(diretorio, planilha)
     
     # Ler e consolidar a aba SPN
     try:
         df_spn = pd.read_excel(caminho_completo, sheet_name='SPN')
-        print(f'Colunas na aba SPN do arquivo {planilha}:', df_spn.columns)  # Verificar colunas
-        
-        # Corrigir os nomes das colunas para garantir que 'Responsavel' exista
-        df_spn.columns = df_spn.columns.str.strip()  # Remover espaços extras no nome das colunas
+        print(f'Colunas na aba SPN do arquivo {planilha}:', df_spn.columns)
+        df_spn.columns = df_spn.columns.str.strip()
         if 'Responsavel' not in df_spn.columns:
             print("A coluna 'Responsavel' não foi encontrada na aba SPN.")
-            continue  # Pula esta aba e continua com o próximo arquivo
-        
+            continue
         df_spn = formatar_datas(df_spn)
-        df_spn = limpar_colunas(df_spn)  # Limpar colunas de texto
+        df_spn = limpar_colunas(df_spn)
         
-        # Verifique se a coluna 'Incidente' existe
         if 'Incidente' in df_spn.columns:
             for _, novo_incidente in df_spn.iterrows():
-                # Se o DataFrame estiver vazio, adiciona diretamente
                 if df_spn_consolidado.empty or novo_incidente['Incidente'] not in df_spn_consolidado['Incidente'].values:
                     df_spn_consolidado = pd.concat([df_spn_consolidado, pd.DataFrame([novo_incidente])], ignore_index=True)
                 else:
-                    # Atualiza o status do incidente existente
                     df_spn_consolidado.loc[df_spn_consolidado['Incidente'] == novo_incidente['Incidente'], 'Status'] = novo_incidente['Status']
+            # Marcar como resolvido os incidentes que sumiram nesta semana
+            incidentes_atuais = set(df_spn['Incidente'])
+            incidentes_consolidados = set(df_spn_consolidado['Incidente'])
+            incidentes_sumiram = incidentes_consolidados - incidentes_atuais
+            df_spn_consolidado.loc[df_spn_consolidado['Incidente'].isin(incidentes_sumiram), 'Status'] = 'Resolvido'
         else:
             print(f"A coluna 'Incidente' não está presente na aba SPN do arquivo {planilha}.")
     except Exception as e:
@@ -65,26 +62,24 @@ for planilha in planilhas:
     # Ler e consolidar a aba ITI
     try:
         df_iti = pd.read_excel(caminho_completo, sheet_name='ITI')
-        print(f'Colunas na aba ITI do arquivo {planilha}:', df_iti.columns)  # Verificar colunas
-        
-        # Corrigir os nomes das colunas para garantir que 'Responsavel' exista
-        df_iti.columns = df_iti.columns.str.strip()  # Remover espaços extras no nome das colunas
+        print(f'Colunas na aba ITI do arquivo {planilha}:', df_iti.columns)
+        df_iti.columns = df_iti.columns.str.strip()
         if 'Responsavel' not in df_iti.columns:
             print("A coluna 'Responsavel' não foi encontrada na aba ITI.")
-            continue  # Pula esta aba e continua com o próximo arquivo
-        
+            continue
         df_iti = formatar_datas(df_iti)
-        df_iti = limpar_colunas(df_iti)  # Limpar colunas de texto
+        df_iti = limpar_colunas(df_iti)
         
-        # Verifique se a coluna 'Incidente' existe
         if 'Incidente' in df_iti.columns:
             for _, novo_incidente in df_iti.iterrows():
-                # Se o DataFrame estiver vazio, adiciona diretamente
                 if df_iti_consolidado.empty or novo_incidente['Incidente'] not in df_iti_consolidado['Incidente'].values:
                     df_iti_consolidado = pd.concat([df_iti_consolidado, pd.DataFrame([novo_incidente])], ignore_index=True)
                 else:
-                    # Atualiza o status do incidente existente
                     df_iti_consolidado.loc[df_iti_consolidado['Incidente'] == novo_incidente['Incidente'], 'Status'] = novo_incidente['Status']
+            incidentes_atuais = set(df_iti['Incidente'])
+            incidentes_consolidados = set(df_iti_consolidado['Incidente'])
+            incidentes_sumiram = incidentes_consolidados - incidentes_atuais
+            df_iti_consolidado.loc[df_iti_consolidado['Incidente'].isin(incidentes_sumiram), 'Status'] = 'Resolvido'
         else:
             print(f"A coluna 'Incidente' não está presente na aba ITI do arquivo {planilha}.")
     except Exception as e:

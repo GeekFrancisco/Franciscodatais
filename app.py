@@ -179,7 +179,7 @@ else:
             legend_title='Tipo de Incidente',
             xaxis_tickangle=-45
         )
-
+        
         ###### Gráfico de backlog por status ######
         if 'Backlog' in df_filtrado.columns:
             # Converter Backlog para datetime para garantir a ordenação correta
@@ -201,14 +201,12 @@ else:
             # Ordenar os meses na ordem desejada (da direita para a esquerda)
             backlog_por_status = backlog_por_status.sort_values(by='Backlog', ascending=True)
 
-            backlog_por_status['Total'] = backlog_por_status.sum(axis=1, numeric_only=True)
-
-            colors = ['lightgreen', 'red', 'Skyblue']  
+            colors = ['lightgreen', 'red']  # Apenas Resolvido e Pendente
 
             fig_backlog_status = px.line(
                 backlog_por_status,
                 x='Backlog_str',  # Usamos a versão formatada da data
-                y=['Resolvido', 'Pendente', 'Total'],
+                y=['Resolvido', 'Pendente'],
                 labels={'Backlog_str': 'Mês/Ano', 'value': 'Contagem', 'variable': 'Status'},
                 title="Distribuição de Incidentes por Status",
                 markers=True,
@@ -243,66 +241,108 @@ else:
 
         # Gráfico de desempenho por responsável
         fig_desempenho = go.Figure()
-        
+
         if 'Responsavel' in df_filtrado.columns:
-            df_responsavel_grouped = df_filtrado.drop_duplicates(subset=['Responsavel', 'Incidente']).groupby(['Responsavel', 'Status']).size().unstack(fill_value=0)
+            # Agrupa e conta incidentes por responsável e status
+            df_responsavel_grouped = (
+                df_filtrado
+                .drop_duplicates(subset=['Responsavel', 'Incidente'])
+                .groupby(['Responsavel', 'Status'])
+                .size()
+                .unstack(fill_value=0)
+            )
+            # Soma total de incidentes por responsável
             df_responsavel_grouped['Total'] = df_responsavel_grouped.sum(axis=1)
-            df_responsavel_grouped['Percentual Resolvidos'] = (df_responsavel_grouped.get('Resolvido', 0) / df_responsavel_grouped['Total']) * 100
+            # Calcula percentual de resolvidos
+            df_responsavel_grouped['Percentual Resolvidos'] = (
+                df_responsavel_grouped.get('Resolvido', 0) / df_responsavel_grouped['Total']
+            ) * 100
             df_responsavel_grouped = df_responsavel_grouped.reset_index()
 
-            # Ordenar o DataFrame pelo total em ordem crescente
-            df_responsavel_grouped = df_responsavel_grouped.sort_values(by='Total', ascending=True)
+            # Filtra responsáveis com mais de 5 incidentes
+            df_responsavel_maior5 = df_responsavel_grouped[df_responsavel_grouped['Total'] > 5].copy()
+            df_responsavel_menor_igual5 = df_responsavel_grouped[df_responsavel_grouped['Total'] <= 5].copy()
 
-            # Adicionar o gráfico de 'Resolvido' primeiro (barra à esquerda)
+            # Agrupa os menores como "Outros"
+            if not df_responsavel_menor_igual5.empty:
+                outros = {
+                    'Responsavel': 'Outros',
+                    'Resolvido': df_responsavel_menor_igual5.get('Resolvido', 0).sum(),
+                    'Pendente': df_responsavel_menor_igual5.get('Pendente', 0).sum(),
+                    'Total': df_responsavel_menor_igual5['Total'].sum(),
+                }
+                # Evita divisão por zero
+                if outros['Total'] > 0:
+                    outros['Percentual Resolvidos'] = (outros['Resolvido'] / outros['Total']) * 100
+                else:
+                    outros['Percentual Resolvidos'] = 0
+                df_responsavel_maior5 = pd.concat([df_responsavel_maior5, pd.DataFrame([outros])], ignore_index=True)
+
+            # Ordena pelo total em ordem crescente
+            df_responsavel_maior5 = df_responsavel_maior5.sort_values(by='Total', ascending=True)
+
+            # Adiciona barra de 'Pendentes' (esquerda)
             fig_desempenho.add_trace(go.Bar(
-                x=df_responsavel_grouped['Responsavel'],
-                y=df_responsavel_grouped['Resolvido'],
+                x=df_responsavel_maior5['Responsavel'],
+                y=df_responsavel_maior5.get('Pendente', 0),
+                name='Pendentes',
+                marker_color='salmon',
+                text=df_responsavel_maior5.get('Pendente', 0),
+                textposition='inside',
+                textfont=dict(size=15)
+            ))
+
+            # Adiciona barra de 'Resolvidos' (meio)
+            fig_desempenho.add_trace(go.Bar(
+                x=df_responsavel_maior5['Responsavel'],
+                y=df_responsavel_maior5.get('Resolvido', 0),
                 name='Resolvidos',
                 marker_color='lightgreen',
-                text=df_responsavel_grouped['Resolvido'],
+                text=df_responsavel_maior5.get('Resolvido', 0),
                 textposition='inside',
-                textfont=dict(size=15)  # Fonte maior para os rótulos de texto nas barras
+                textfont=dict(size=15)
             ))
 
-            # Adicionar o gráfico de 'Total' depois (barra à direita)
+            # Adiciona barra de 'Total' (direita)
             fig_desempenho.add_trace(go.Bar(
-                x=df_responsavel_grouped['Responsavel'],
-                y=df_responsavel_grouped['Total'],
+                x=df_responsavel_maior5['Responsavel'],
+                y=df_responsavel_maior5['Total'],
                 name='Total',
-                marker_color='lightblue',
-                text=df_responsavel_grouped['Total'],
+                marker_color='skyblue',
+                text=df_responsavel_maior5['Total'],
                 textposition='inside',
-                textfont=dict(size=15)  # Fonte maior para os rótulos de texto nas barras
+                textfont=dict(size=15)
             ))
 
+            # Layout do gráfico
             fig_desempenho.update_layout(
                 title='Desempenho dos Responsáveis',
                 xaxis_title='Responsável',
                 yaxis_title='Quantidade',
-                barmode='group',  # Modo de agrupamento
+                barmode='group',
                 legend_title='Tipo'
             )
 
-            # Adicionar anotações com o percentual de resolvidos
-            for i in range(len(df_responsavel_grouped)):
-                fig_desempenho.add_annotation(
-                    x=df_responsavel_grouped['Responsavel'][i],
-                    y=df_responsavel_grouped['Resolvido'][i],
-                    text=f"{df_responsavel_grouped['Percentual Resolvidos'][i]:.1f}%",
-                    showarrow=True,
-                    arrowhead=2,
-                    ax=0,
-                    ay=-30,
-                    font=dict(size=14)
-                )
+    # Adiciona anotações com o percentual de resolvidos
+    for i in range(len(df_responsavel_maior5)):
+        fig_desempenho.add_annotation(
+            x=df_responsavel_maior5['Responsavel'].iloc[i],
+            y=df_responsavel_maior5.get('Resolvido', 0).iloc[i],
+            text=f"{df_responsavel_maior5['Percentual Resolvidos'].iloc[i]:.1f}%",
+            showarrow=True,
+            arrowhead=2,
+            ax=0,
+            ay=-30,
+            font=dict(size=14)
+        )
 
         # Gráfico de pizza
         if 'Responsavel' in df_filtrado.columns:
-            df_status = df_filtrado.drop_duplicates(subset=['Responsavel', 'Incidente']).groupby('Responsavel').size()            
+            df_status = df_filtrado.drop_duplicates(subset=['Responsavel', 'Incidente']).groupby('Responsavel').size()
             total = df_status.sum()
             percentages = df_status / total * 100
-            df_status_grouped = df_status[percentages >= 5]
-            other_count = df_status[percentages < 5].sum()
+            df_status_grouped = df_status[percentages > 5]
+            other_count = df_status[percentages <= 5].sum()
             if other_count > 0:
                 df_status_grouped['Outros'] = other_count
 
