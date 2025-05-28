@@ -7,8 +7,7 @@ diretorio = r'C:\Users\franciscoj\Python_Initial\Pyhton_Web\Base'
 
 # Lista com os nomes das planilhas
 planilhas = [ 'Backlog.xlsx','Backlog_2.xlsx','Backlog_3.xlsx','Backlog_4.xlsx','Backlog_5.xlsx','Backlog_6.xlsx','Backlog_7.xlsx','Backlog_8.xlsx','Backlog_9.xlsx','Backlog_10.xlsx',
-             'Backlog_11.xlsx','Backlog_12.xlsx','Backlog_13.xlsx','Backlog_14.xlsx','Backlog_15.xlsx','Backlog_16.xlsx','Backlog_17.xlsx','Backlog_18.xlsx',''
-             'Backlog_19.xlsx','Backlog_20.xlsx','Backlog_21.xlsx']
+             'Backlog_11.xlsx','Backlog_12.xlsx','Backlog_13.xlsx','Backlog_14.xlsx','Backlog_15.xlsx','Backlog_16.xlsx','Backlog_17.xlsx','Backlog_18.xlsx','Backlog_19.xlsx','Backlog_20.xlsx','Backlog_21.xlsx']
 
 # DataFrames para armazenar os dados consolidados das abas SPN e ITI
 df_spn_consolidado = pd.DataFrame(columns=['Setor', 'Responsavel', 'Ano', 'Semana', 'Inicio_Semana', 'Final_Semana', 'Incidente', 'Backlog', 'Data', 'Status', 'Coordenador'])
@@ -87,13 +86,12 @@ for planilha in planilhas:
 
 # Reordenar as colunas para garantir que estão no mesmo formato em ambas as planilhas
 df_spn_consolidado = df_spn_consolidado[[
-    'Setor', 'Responsavel', 'Ano', 'Semana', 'Inicio_Semana', 'Final_Semana', 
-    'Incidente', 'Backlog', 'Data', 'Status', 'Coordenador'
-]]
+    'Setor', 'Responsavel', 'Ano', 'Semana', 'Inicio_Semana', 'Final_Semana','Incidente', 'Backlog', 'Data', 'Status', 'Coordenador'
+     ]]
+
 df_iti_consolidado = df_iti_consolidado[[
-    'Setor', 'Responsavel', 'Ano', 'Semana', 'Inicio_Semana', 'Final_Semana', 
-    'Incidente', 'Backlog', 'Data', 'Status', 'Coordenador'
-]]
+    'Setor', 'Responsavel', 'Ano', 'Semana', 'Inicio_Semana', 'Final_Semana','Incidente', 'Backlog', 'Data', 'Status', 'Coordenador'
+     ]]
 
 # Salvar os DataFrames consolidados em uma nova planilha, com abas separadas para SPN e ITI
 output_path = r'C:\Users\franciscoj\Python_Initial\Pyhton_Web\Base\consolidado.xlsx'
@@ -104,5 +102,4 @@ with pd.ExcelWriter(output_path) as writer:
 # Exibir as colunas disponíveis após a consolidação
 print("Colunas disponíveis na tabela SPN:", df_spn_consolidado.columns.tolist())
 print("Colunas disponíveis na tabela ITI:", df_iti_consolidado.columns.tolist())
-
 print("Consolidação concluída com sucesso.")
