@@ -213,6 +213,18 @@ else:
                 color_discrete_sequence=colors
             )
 
+            # ADICIONE AQUI a linha de média tracejada:
+            for status in ['Resolvido', 'Pendente']:
+                if status in backlog_por_status.columns:
+                    media = backlog_por_status[status].mean()
+                    fig_backlog_status.add_hline(
+                        y=media,
+                        line_dash="dash",
+                        line_color='gray',
+                        annotation_text=f"Média {status}: {media:.1f}",
+                        annotation_position="top left"
+                    )
+
             # Inverter o eixo X para mostrar da direita para a esquerda
             fig_backlog_status.update_layout(xaxis=dict(categoryorder='array', categoryarray=backlog_por_status['Backlog_str']))
 
@@ -314,7 +326,7 @@ else:
                 textfont=dict(size=15)
             ))
 
-            # Layout do gráfico
+           # Layout do gráfico
             fig_desempenho.update_layout(
                 title='Desempenho dos Responsáveis',
                 xaxis_title='Responsável',
@@ -323,43 +335,49 @@ else:
                 legend_title='Tipo'
             )
 
-    # Adiciona anotações com o percentual de resolvidos
-    for i in range(len(df_responsavel_maior5)):
-        fig_desempenho.add_annotation(
-            x=df_responsavel_maior5['Responsavel'].iloc[i],
-            y=df_responsavel_maior5.get('Resolvido', 0).iloc[i],
-            text=f"{df_responsavel_maior5['Percentual Resolvidos'].iloc[i]:.1f}%",
-            showarrow=True,
-            arrowhead=2,
-            ax=0,
-            ay=-30,
-            font=dict(size=14)
-        )
+            # Adiciona anotações com o percentual de resolvidos em cada barra de Resolvidos
+            for i in range(len(df_responsavel_maior5)):
+                fig_desempenho.add_annotation(
+                    x=df_responsavel_maior5['Responsavel'].iloc[i],
+                    y=df_responsavel_maior5.get('Resolvido', 0).iloc[i],
+                    text=f"{df_responsavel_maior5['Percentual Resolvidos'].iloc[i]:.1f}%",
+                    showarrow=False,
+                    font=dict(size=14),
+                    yshift=10  # Ajusta a posição do texto acima da barra
+                )
 
         # Gráfico de pizza
         if 'Responsavel' in df_filtrado.columns:
-            df_status = df_filtrado.drop_duplicates(subset=['Responsavel', 'Incidente']).groupby('Responsavel').size()
-            total = df_status.sum()
-            percentages = df_status / total * 100
-            df_status_grouped = df_status[percentages > 5]
-            other_count = df_status[percentages <= 5].sum()
-            if other_count > 0:
-                df_status_grouped['Outros'] = other_count
+            # Mesmo critério do gráfico de barras: <= 5 chamados
+            df_status = (
+                df_filtrado
+                .drop_duplicates(subset=['Responsavel', 'Incidente'])
+                .groupby('Responsavel')
+                .size()
+            )
+            # Separa maiores e menores/iguais a 5
+            df_status_maior5 = df_status[df_status > 5]
+            outros_count = df_status[df_status <= 5].sum()
+            # Monta Series final
+            if outros_count > 0:
+                df_status_pizza = pd.concat([df_status_maior5, pd.Series([outros_count], index=['Outros'])])
+            else:
+                df_status_pizza = df_status_maior5
 
-            # Gráfico de pizza se houver dados
-            if not df_status_grouped.empty:
+            # Só plota se houver dados
+            if not df_status_pizza.empty:
                 fig_responsaveis = px.pie(
-                    df_status_grouped,
-                    names=df_status_grouped.index,
-                    values=df_status_grouped.values,
+                    df_status_pizza,
+                    names=df_status_pizza.index,
+                    values=df_status_pizza.values,
                     title='Distribuição Backlog por Responsáveis',
                     hole=0.3
                 )
-
-                # Adicionando rótulos de dados ao gráfico de pizza
-                fig_responsaveis.update_traces(textposition='inside', 
-                                               textinfo='percent',
-                                               textfont=dict(size=14))
+                fig_responsaveis.update_traces(
+                    textposition='inside',
+                    textinfo='percent',
+                    textfont=dict(size=14)
+                )
 
         # Disposição dos gráficos em 3x2
         col1, col2 = st.columns(2)
