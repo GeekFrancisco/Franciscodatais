@@ -213,17 +213,16 @@ else:
                 color_discrete_sequence=colors
             )
 
-            # ADICIONE AQUI a linha de média tracejada:
-            for status in ['Resolvido', 'Pendente']:
-                if status in backlog_por_status.columns:
-                    media = backlog_por_status[status].mean()
-                    fig_backlog_status.add_hline(
-                        y=media,
-                        line_dash="dash",
-                        line_color='gray',
-                        annotation_text=f"Média {status}: {media:.1f}",
-                        annotation_position="top left"
-                    )
+           # Linha de média tracejada apenas para Resolvidos
+            if 'Resolvido' in backlog_por_status.columns:
+                media_resolvidos = backlog_por_status['Resolvido'].mean()
+                fig_backlog_status.add_hline(
+                    y=media_resolvidos,
+                    line_dash="dash",
+                    line_color='gray',
+                    annotation_text=f"Média Resolvidos: {media_resolvidos:.1f}",
+                    annotation_position="top left"
+                )
 
             # Inverter o eixo X para mostrar da direita para a esquerda
             fig_backlog_status.update_layout(xaxis=dict(categoryorder='array', categoryarray=backlog_por_status['Backlog_str']))
