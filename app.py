@@ -16,10 +16,18 @@ else:
 
 # Carregar credenciais do .env
 usuarios = {
-    "emerson": (os.getenv("USERNAME_EMERSON"), "Emerson Simette"),
+    "emerson": (os.getenv("USERNAME_EMERSON"), "Emerson Cleiton Simette"),
     "willian": (os.getenv("USERNAME_WILLIAN"), "Willian Jones Rios"),
     "rafael": (os.getenv("USERNAME_RAFAEL"), "Rafael Dall'Anese"),
     "admin": (os.getenv("USERNAME_ADMIN"), "Administrador"),
+}
+
+# Adicione este bloco:
+setores_por_usuario = {
+    "Emerson Cleiton Simette": ["ITI"],
+    "Willian Jones Rios": ["SPN"],
+    "Rafael Dall'Anese": ["SPN", "ITI"],
+    "Administrador": ["SPN", "ITI"],
 }
 
 def verificar_login(username, password):
@@ -60,7 +68,7 @@ if not st.session_state.login:
 else:
     st.markdown("""<style>.fixed-header {position: fixed; top: 0; left: 0; right: 0; background-color: white; z-index: 1; border-bottom: 1px solid #e0e0e0; padding: 10px; display: flex; justify-content: space-between; align-items: center;} .fixed-header h1 {margin: 0; font-size: 24px;} .fixed-header h2 {margin: 0; font-size: 18px; color: #555;} </style>""", unsafe_allow_html=True)
     st.markdown('<div class="fixed-header"><h1>DataPaws</h1><h2>Análise de Dados Consolidados - Backlog</h2><div>', unsafe_allow_html=True)
-    st.sidebar.header(f"Bem-vindo, {st.session_state.nome_usuario} ")
+    st.sidebar.markdown(f"<b>Bem-vindo</b><br>{st.session_state.nome_usuario}", unsafe_allow_html=True)
 
     # Sidebar
     if st.sidebar.button("Logout"):
@@ -85,8 +93,10 @@ else:
     # Barra lateral para filtros
     st.sidebar.header("Filtros")
 
-    # Filtro de Setor com caixas de seleção
-    setores_disponiveis = df_consolidado['Setor'].unique()
+    # Filtro de setores conforme usuário logado
+    usuario_nome = st.session_state.nome_usuario
+    setores_permitidos = setores_por_usuario.get(usuario_nome, ["SPN", "ITI"])
+    setores_disponiveis = [s for s in df_consolidado['Setor'].unique() if s in setores_permitidos]
     setores_selecionados = st.sidebar.multiselect("Setores", setores_disponiveis, default=setores_disponiveis)
 
     # Definir o título dinamicamente com base nos setores selecionados e adicionar cor para destaque
