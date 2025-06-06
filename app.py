@@ -90,7 +90,7 @@ else:
     df_iti['Aba'] = 'ITI'
     df_consolidado = pd.concat([df_spn, df_iti], ignore_index=True)
 
-    # --- SELETOR DE PÁGINA ---
+    # --- SELETOR DE PÁGINA --- #
     abas = st.tabs(["Dashboard", "Relatórios"])
 
     with abas[0]:
@@ -196,7 +196,7 @@ else:
                 xaxis_tickangle=-45
             )
             
-            ###### Gráfico de backlog por status ######
+            # Gráfico de Backlog por Status 
             if 'Backlog' in df_filtrado.columns:
                 df_filtrado['Backlog'] = pd.to_datetime(df_filtrado['Backlog'], format='%m/%Y')
                 backlog_por_status = (
