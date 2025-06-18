@@ -6,9 +6,11 @@ import re
 diretorio = r'C:\Users\franciscoj\Python_Initial\Pyhton_Web\Base'
 
 # Lista com os nomes das planilhas
-planilhas = [ 'Backlog.xlsx','Backlog_2.xlsx','Backlog_3.xlsx','Backlog_4.xlsx','Backlog_5.xlsx','Backlog_6.xlsx','Backlog_7.xlsx','Backlog_8.xlsx','Backlog_9.xlsx','Backlog_10.xlsx',
+planilhas = [ 
+             'Backlog.xlsx','Backlog_2.xlsx','Backlog_3.xlsx','Backlog_4.xlsx','Backlog_5.xlsx','Backlog_6.xlsx','Backlog_7.xlsx','Backlog_8.xlsx','Backlog_9.xlsx','Backlog_10.xlsx',
              'Backlog_11.xlsx','Backlog_12.xlsx','Backlog_13.xlsx','Backlog_14.xlsx','Backlog_15.xlsx','Backlog_16.xlsx','Backlog_17.xlsx','Backlog_18.xlsx','Backlog_19.xlsx','Backlog_20.xlsx',
-             'Backlog_21.xlsx','Backlog_22.xlsx','Backlog_23.xlsx','Backlog_24.xlsx']
+             'Backlog_21.xlsx','Backlog_22.xlsx','Backlog_23.xlsx','Backlog_24.xlsx'
+        ]
 
 # DataFrames para armazenar os dados consolidados das abas SPN e ITI
 df_spn_consolidado = pd.DataFrame(columns=['Setor', 'Responsavel', 'Ano', 'Semana', 'Inicio_Semana', 'Final_Semana', 'Incidente', 'Backlog', 'Data', 'Status', 'Coordenador'])
@@ -49,6 +51,7 @@ for planilha in planilhas:
                     df_spn_consolidado = pd.concat([df_spn_consolidado, pd.DataFrame([novo_incidente])], ignore_index=True)
                 else:
                     df_spn_consolidado.loc[df_spn_consolidado['Incidente'] == novo_incidente['Incidente'], 'Status'] = novo_incidente['Status']
+            
             # Marcar como resolvido os incidentes que sumiram nesta semana
             incidentes_atuais = set(df_spn['Incidente'])
             incidentes_consolidados = set(df_spn_consolidado['Incidente'])

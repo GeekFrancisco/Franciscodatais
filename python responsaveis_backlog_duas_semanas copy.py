@@ -33,6 +33,7 @@ if resultados:
     for aba, min_semanas in [('SPN', 3), ('ITI', 5)]:
         df_aba = df_todos[df_todos['Aba'] == aba].copy()
         df_aba = df_aba.sort_values(['Incidente', 'Ano', 'Semana'])
+        
         # Calcular sequência de semanas consecutivas para cada incidente
         df_aba['Grupo'] = (
             (df_aba['Semana'] != df_aba.groupby('Incidente')['Semana'].shift(1) + 1) |
