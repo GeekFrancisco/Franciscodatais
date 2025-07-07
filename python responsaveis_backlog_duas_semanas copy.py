@@ -6,7 +6,7 @@ planilhas = [
     'Backlog.xlsx','Backlog_2.xlsx','Backlog_3.xlsx','Backlog_4.xlsx','Backlog_5.xlsx','Backlog_6.xlsx','Backlog_7.xlsx',
     'Backlog_8.xlsx','Backlog_9.xlsx','Backlog_10.xlsx','Backlog_11.xlsx','Backlog_12.xlsx','Backlog_13.xlsx','Backlog_14.xlsx',
     'Backlog_15.xlsx','Backlog_16.xlsx','Backlog_17.xlsx','Backlog_18.xlsx','Backlog_19.xlsx','Backlog_20.xlsx', 'Backlog_21.xlsx',
-    'Backlog_22.xlsx','Backlog_23.xlsx'
+    'Backlog_22.xlsx','Backlog_23.xlsx','Backlog_24.xlsx','Backlog_25.xlsx'
 ]
 
 resultados = []
