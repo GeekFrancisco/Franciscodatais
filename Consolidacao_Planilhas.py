@@ -30,7 +30,7 @@ def limpar_colunas(df):
         df[coluna] = df[coluna].str.strip()  # Remove espaços extras no início e no final
         df[coluna] = df[coluna].apply(lambda x: re.sub(r'[\n\t\r\x0b\x0c]', '', x) if isinstance(x, str) else x)  # Remove caracteres invisíveis
     return df
-
+l
 for planilha in planilhas:
     caminho_completo = os.path.join(diretorio, planilha)
     
