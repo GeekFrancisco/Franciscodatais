@@ -5,8 +5,9 @@ import plotly.graph_objects as go
 import os
 from dotenv import load_dotenv
 import io 
+import numpy as np 
 
-# Carregar variáveis de ambiente
+#Carregar variáveis de ambiente
 load_dotenv()
 
 # Configuração da página
@@ -91,7 +92,7 @@ else:
     df_consolidado = pd.concat([df_spn, df_iti], ignore_index=True)
 
     # --- SELETOR DE PÁGINA --- #
-    abas = st.tabs(["Dashboard", "Relatórios"])
+    abas = st.tabs(["Dashboard", "Relatórios", "Eficiência"])
 
     with abas[0]:
 
@@ -474,3 +475,85 @@ else:
 
             # Relatório com altura maior
             st.dataframe(df_relatorio[colunas_exibir], use_container_width=True, height=700)
+        
+    # ...existing code...
+    with abas[2]:
+        st.markdown("<h1>Eficiência Semanal e Projeção</h1>", unsafe_allow_html=True)
+
+        # Filtros iguais ao Dashboard
+        setores_disponiveis = [s for s in df_consolidado['Setor'].unique() if s in setores_permitidos]
+        setores_selecionados = st.multiselect(
+            "Setores", setores_disponiveis, default=setores_disponiveis, key="filtro_eficiencia_setor"
+        )
+
+        responsaveis_disponiveis = sorted(df_consolidado[df_consolidado['Setor'].isin(setores_selecionados)]['Responsavel'].unique())
+        responsavel_selecionado = st.multiselect(
+            "Responsável", ["Todos"] + responsaveis_disponiveis, default=["Todos"], key="filtro_eficiencia_responsavel"
+        )
+        if "Todos" in responsavel_selecionado or not responsavel_selecionado:
+            responsaveis_filtrados = responsaveis_disponiveis
+        else:
+            responsaveis_filtrados = responsavel_selecionado
+
+        status_opcoes = ["Resolvido", "Pendente"]
+        status_selecionado = st.multiselect(
+            "Status", status_opcoes, default=status_opcoes, key="filtro_eficiencia_status"
+        )
+
+        # Filtrar dados conforme seleção
+        df_filtrado = df_consolidado[
+            (df_consolidado['Setor'].isin(setores_selecionados)) &
+            (df_consolidado['Responsavel'].isin(responsaveis_filtrados)) &
+            (df_consolidado['Status'].isin(status_selecionado))
+        ].copy()
+
+        # Garantir que 'Semana' é numérica
+        df_filtrado['Semana'] = pd.to_numeric(df_filtrado['Semana'], errors='coerce')
+
+        # Eficiência semanal (% resolvidos)
+        eficiencia_semanal = (
+            df_filtrado.groupby(['Ano', 'Semana'])['Status']
+            .apply(lambda x: (x == 'Resolvido').mean() * 100)
+            .reset_index(name='Eficiência (%)')
+        )
+
+        # Projeção: média dos últimos 12 semanas (3 meses)
+        ultimas_semanas = eficiencia_semanal.sort_values(['Ano', 'Semana'], ascending=[False, False]).head(12)
+        media_eficiencia = ultimas_semanas['Eficiência (%)'].mean() if not ultimas_semanas.empty else 0
+
+        # Criar semanas futuras como placeholder
+        semana_max = eficiencia_semanal['Semana'].max()
+        ano_atual = eficiencia_semanal['Ano'].max()
+        semanas_futuras = pd.DataFrame({
+            'Ano': [ano_atual]*4,
+            'Semana': [semana_max + i for i in range(1, 5)],
+            'Eficiência (%)': [media_eficiencia]*4
+        })
+
+        # Concatenar para mostrar no gráfico
+        eficiencia_proj = pd.concat([eficiencia_semanal, semanas_futuras], ignore_index=True)
+
+        fig = px.line(
+            eficiencia_proj,
+            x='Semana',
+            y='Eficiência (%)',
+            color='Ano',
+            markers=True,
+            title='Eficiência Semanal (%) e Projeção Próximas Semanas',
+            text='Eficiência (%)'
+        )
+        fig.update_traces(textposition="top center")
+
+        # Destacar projeção
+        fig.add_scatter(
+            x=semanas_futuras['Semana'],
+            y=semanas_futuras['Eficiência (%)'],
+            mode='markers+lines',
+            name='Projeção',
+            line=dict(dash='dash', color='gray'),
+            marker=dict(symbol='diamond', color='gray', size=10)
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+        st.write(f"Projeção baseada na média dos últimos 3 meses: **{media_eficiencia:.1f}%**")
+    # ...existing code...
