@@ -37,7 +37,7 @@ def gerar_pdf(df, colunas_desejadas, nome_arquivo, data_inicio, data_fim):
 
     # Título
     pdf.set_font("Arial", 'B', size=16)
-    pdf.cell(0, 10, txt=f"Relatório de Backlog - Semana de {data_inicio} até {data_fim} - ITI", ln=True, align='C')
+    pdf.cell(0, 10, txt=f"Relatório de Backlog - Semana de {data_inicio} até {data_fim} - SPN", ln=True, align='C')
     pdf.ln(5)
 
     # Cabeçalho
@@ -94,8 +94,8 @@ def gerar_pdf(df, colunas_desejadas, nome_arquivo, data_inicio, data_fim):
     print(f"PDF gerado com sucesso: {nome_arquivo}")
 
 # Caminho para o arquivo Excel
-caminho_arquivo = 'Base/Backlog_27.xlsx'
-aba = 'ITI'
+caminho_arquivo = 'Base/Backlog_30.xlsx'
+aba = 'SPN'
 
 # Lê a planilha
 df = ler_arquivo_excel(caminho_arquivo, aba)
@@ -141,7 +141,7 @@ if not os.path.exists(diretorio_relatorio):
     os.makedirs(diretorio_relatorio)
 
 # Define o caminho completo para o arquivo PDF
-caminho_arquivo_pdf = os.path.join(diretorio_relatorio, 'Report_ITI_Backlog_Semana_27_2025.pdf')
+caminho_arquivo_pdf = os.path.join(diretorio_relatorio, 'Report_SPN_Backlog_Semana_30_2025.pdf')
 
 # Gera o PDF com formatação em vermelho para "Pendentes"
 gerar_pdf(df_filtrado, colunas_desejadas + ['Tempo (Meses)'], caminho_arquivo_pdf, data_inicio_formatada, data_fim_formatada)
