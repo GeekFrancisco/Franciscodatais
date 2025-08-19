@@ -94,7 +94,7 @@ def gerar_pdf(df, colunas_desejadas, nome_arquivo, data_inicio, data_fim):
     print(f"PDF gerado com sucesso: {nome_arquivo}")
 
 # Caminho para o arquivo Excel
-caminho_arquivo = 'Base/Backlog_31.xlsx'
+caminho_arquivo = 'Base/Backlog_33.xlsx'
 aba = 'SPN'
 
 # Lê a planilha
@@ -141,7 +141,7 @@ if not os.path.exists(diretorio_relatorio):
     os.makedirs(diretorio_relatorio)
 
 # Define o caminho completo para o arquivo PDF
-caminho_arquivo_pdf = os.path.join(diretorio_relatorio, 'Report_SPN_Backlog_Semana_31_2025.pdf')
+caminho_arquivo_pdf = os.path.join(diretorio_relatorio, 'Report_SPN_Backlog_Semana_33_2025.pdf')
 
 # Gera o PDF com formatação em vermelho para "Pendentes"
 gerar_pdf(df_filtrado, colunas_desejadas + ['Tempo (Meses)'], caminho_arquivo_pdf, data_inicio_formatada, data_fim_formatada)

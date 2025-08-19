@@ -5,7 +5,7 @@ import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages
 
 # Caminho para a planilha na pasta raiz do projeto
-file_path = 'Base\Backlog_31.xlsx'
+file_path = 'Base\Backlog_33.xlsx'
 
 # Tentar carregar a aba 'SPN' da planilha "Backlog.xlsx"
 try:
@@ -25,14 +25,14 @@ except Exception as e:
     exit()
 
 # Criar um PDF para salvar os gráficos
-pdf_path = "Graficos_Backlog_SPN_Semana_31_2025.pdf"
+pdf_path = "Graficos_Backlog_SPN_Semana_33_2025.pdf"
 pdf = PdfPages(pdf_path)
 
 # Configurar o layout da página com vários gráficos (ex: 2 linhas e 2 colunas)
 fig, axs = plt.subplots(2, 2, figsize=(12, 10))  # 2x2 grid de gráficos
 
 # Adicionar título global à página
-fig.suptitle('Análise Backlog SPN - Semana 04/08 a 08/08', fontsize=16)
+fig.suptitle('Análise Backlog SPN - Semana 18/08 a 22/08', fontsize=16)
 
 # Função auxiliar para adicionar rótulos de dados
 def add_labels_bars(ax):
