@@ -223,45 +223,36 @@ def criar_grafico_comparativo(df_filtrado: pd.DataFrame) -> go.Figure:
                          '<extra></extra>'
         ))
     
-    # Configurar layout com estilo moderno
-    fig.update_layout(
-        title=dict(
-            text='<b>Comparativo por Setor - Visão Geral</b>',
-            x=0,
-            font=dict(size=20, color=COLORS['text'], family='Arial Black')
-        ),
-        xaxis=dict(
-            title='<b>Setor</b>',
-            titlefont=dict(size=14, color=COLORS['text']),
-            tickfont=dict(size=12, color=COLORS['text']),
-            tickangle=-45,
-            gridcolor='rgba(0,0,0,0.1)',
-            showgrid=True
-        ),
-        yaxis=dict(
-            title='<b>Quantidade de Registros</b>',
-            titlefont=dict(size=14, color=COLORS['text']),
-            tickfont=dict(size=12, color=COLORS['text']),
-            gridcolor='rgba(0,0,0,0.1)',
-            showgrid=True
-        ),
-        barmode='group',
-        bargap=0.15,
-        bargroupgap=0.1,
-        legend=dict(
-            title='<b>Status</b>',
-            orientation='h',
-            yanchor='bottom',
-            y=1.02,
-            xanchor='right',
-            x=1,
-            font=dict(size=12, color=COLORS['text'])
-        ),
-        plot_bgcolor=COLORS['background'],
-        paper_bgcolor='white',
-        margin=dict(l=60, r=60, t=80, b=60),
-        height=500
-    )
+    # Configurar layout simplificado para compatibilidade com Streamlit Cloud
+    try:
+        fig.update_layout(
+            title='Comparativo por Setor - Visão Geral',
+            xaxis_title='Setor',
+            yaxis_title='Quantidade de Registros',
+            barmode='group',
+            bargap=0.15,
+            bargroupgap=0.1,
+            legend=dict(
+                orientation='h',
+                yanchor='bottom',
+                y=1.02,
+                xanchor='right',
+                x=1
+            ),
+            height=500,
+            showlegend=True
+        )
+        
+        # Aplicar rotação dos labels do eixo X separadamente
+        fig.update_xaxes(tickangle=-45)
+        
+    except Exception as e:
+        # Fallback para layout básico em caso de erro
+        fig.update_layout(
+            title='Comparativo por Setor - Visão Geral',
+            barmode='group',
+            height=500
+        )
     
     return fig
 
@@ -343,43 +334,27 @@ def criar_grafico_backlog_status(df_filtrado: pd.DataFrame) -> Optional[go.Figur
                 annotation_font=dict(size=12, color=COLORS['text'])
             )
         
-        # Configurar layout moderno
-        fig.update_layout(
-            title=dict(
-                text='<b>Evolução Temporal do Backlog</b>',
-                x=0,
-                font=dict(size=20, color=COLORS['text'], family='Arial Black')
-            ),
-            xaxis=dict(
-                title='<b>Período (Mês/Ano)</b>',
-                titlefont=dict(size=14, color=COLORS['text']),
-                tickfont=dict(size=12, color=COLORS['text']),
+        # Configurar layout simplificado para compatibilidade com Streamlit Cloud
+        try:
+            fig.update_layout(
+                title='Evolução Temporal do Backlog',
+                xaxis_title='Período (Mês/Ano)',
+                yaxis_title='Quantidade de Registros',
+                height=500
+            )
+            
+            # Configurações adicionais separadas
+            fig.update_xaxes(
                 categoryorder='array', 
-                categoryarray=backlog_por_status['Backlog_str'],
-                gridcolor='rgba(0,0,0,0.1)',
-                showgrid=True
-            ),
-            yaxis=dict(
-                title='<b>Quantidade de Registros</b>',
-                titlefont=dict(size=14, color=COLORS['text']),
-                tickfont=dict(size=12, color=COLORS['text']),
-                gridcolor='rgba(0,0,0,0.1)',
-                showgrid=True
-            ),
-            legend=dict(
-                title='<b>Status</b>',
-                orientation='h',
-                yanchor='bottom',
-                y=1.02,
-                xanchor='right',
-                x=1,
-                font=dict(size=12, color=COLORS['text'])
-            ),
-            plot_bgcolor=COLORS['background'],
-            paper_bgcolor='white',
-            margin=dict(l=60, r=60, t=80, b=60),
-            height=500
-        )
+                categoryarray=backlog_por_status['Backlog_str']
+            )
+            
+        except Exception as layout_error:
+            # Fallback para layout básico
+            fig.update_layout(
+                title='Evolução Temporal do Backlog',
+                height=500
+            )
         
         return fig
         
@@ -450,35 +425,27 @@ def criar_grafico_pizza_responsaveis(df_filtrado: pd.DataFrame) -> Optional[go.F
             pull=[0.05 if i == 0 else 0 for i in range(len(df_status_pizza))]
         )])
         
-        # Configurar layout moderno
-        fig.update_layout(
-            title=dict(
-                text='<b>Distribuição por Responsáveis</b>',
-                x=0,
-                font=dict(size=20, color=COLORS['text'], family='Arial Black')
-            ),
-            annotations=[
-                dict(
-                    text=f"<b>Total<br>{df_status_pizza.sum()}</b>",
-                    x=0.5, y=0.5,
-                    font_size=16,
-                    font_color=COLORS['text'],
-                    showarrow=False
-                )
-            ],
-            legend=dict(
-                orientation='v',
-                yanchor='middle',
-                y=0.5,
-                xanchor='left',
-                x=1.05,
-                font=dict(size=12, color=COLORS['text'])
-            ),
-            plot_bgcolor=COLORS['background'],
-            paper_bgcolor='white',
-            margin=dict(l=60, r=120, t=80, b=60),
-            height=500
-        )
+        # Configurar layout simplificado para compatibilidade com Streamlit Cloud
+        try:
+            fig.update_layout(
+                title='Distribuição por Responsáveis',
+                height=500
+            )
+            
+            # Adicionar anotação central separadamente
+            fig.add_annotation(
+                text=f"Total<br>{df_status_pizza.sum()}",
+                x=0.5, y=0.5,
+                font_size=16,
+                showarrow=False
+            )
+            
+        except Exception as layout_error:
+            # Fallback para layout básico
+            fig.update_layout(
+                title='Distribuição por Responsáveis',
+                height=500
+            )
         
         return fig
         
@@ -600,47 +567,22 @@ def criar_grafico_desempenho(df_filtrado: pd.DataFrame) -> go.Figure:
                 borderwidth=1
             )
         
-        # Configurar layout moderno
-        fig.update_layout(
-            title=dict(
-                text='<b>Desempenho Individual dos Responsáveis</b>',
-                x=0,
-                font=dict(size=20, color=COLORS['text'], family='Arial Black')
-            ),
-            xaxis=dict(
-                title=dict(
-                    text='<b>Responsável</b>',
-                    font=dict(size=14, color=COLORS['text'])
-                ),
-                tickfont=dict(size=12, color=COLORS['text']),
-                gridcolor='rgba(128,128,128,0.2)',
-                showgrid=True
-            ),
-            yaxis=dict(
-                title=dict(
-                    text='<b>Quantidade de Registros</b>',
-                    font=dict(size=14, color=COLORS['text'])
-                ),
-                tickfont=dict(size=12, color=COLORS['text']),
-                gridcolor='rgba(128,128,128,0.2)',
-                showgrid=True
-            ),
-            barmode='group',
-            bargap=0.15,
-            bargroupgap=0.1,
-            legend=dict(
-                orientation='h',
-                yanchor='bottom',
-                y=1.02,
-                xanchor='right',
-                x=1,
-                font=dict(size=12, color=COLORS['text'])
-            ),
-            plot_bgcolor=COLORS['background'],
-            paper_bgcolor='white',
-            margin=dict(l=80, r=60, t=100, b=80),
-            height=500
-        )
+        # Configurar layout simplificado para compatibilidade com Streamlit Cloud
+        try:
+            fig.update_layout(
+                title='Desempenho Individual dos Responsáveis',
+                xaxis_title='Responsável',
+                yaxis_title='Quantidade de Registros',
+                barmode='group',
+                height=500
+            )
+            
+        except Exception as layout_error:
+            # Fallback para layout básico
+            fig.update_layout(
+                title='Desempenho Individual dos Responsáveis',
+                height=500
+            )
         
         return fig
         
