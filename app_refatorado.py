@@ -1,6 +1,5 @@
 """
-DataPaws - Dashboard de Análise de Backlog
-Aplicação Streamlit para análise de dados consolidados de backlog
+Dashboard de Análise de Backlog
 Versão refatorada com melhor organização e performance
 """
 
@@ -21,7 +20,7 @@ load_dotenv()
 
 # Configurações da aplicação
 APP_CONFIG = {
-    'title': 'DataPaws',
+    'title': 'Dashboard de Backlog',
     'icon': 'Base/IMG/Designer.jpeg',
     'data_file': 'Base/consolidado.xlsx'
 }
@@ -724,7 +723,7 @@ def aplicar_estilos_css() -> None:
 
 def renderizar_tela_login() -> None:
     """Renderiza a tela de login."""
-    st.markdown(f'<h1 style="text-align: center; color: #2c3e50; margin-bottom: 30px; font-size: 32px; font-weight: 700;">{APP_CONFIG["title"]}</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 style="text-align: center; color: #2c3e50; margin-bottom: 30px; font-size: 32px; font-weight: 700;">DataPaws</h1>', unsafe_allow_html=True)
 
     with st.form(key='login_form', clear_on_submit=True):
         username = st.text_input("Usuário", placeholder="Username").lower()
@@ -743,13 +742,6 @@ def renderizar_tela_login() -> None:
 
 def renderizar_cabecalho() -> None:
     """Renderiza o cabeçalho da aplicação."""
-    # Título principal sem cabeçalho fixo
-    st.markdown(
-        f'<h1 style="color: #2c3e50; margin-bottom: 10px;">{APP_CONFIG["title"]}</h1>'
-        f'<h2 style="color: #6c757d; margin-bottom: 20px; font-size: 18px;">Análise de Dados Consolidados - Backlog</h2>',
-        unsafe_allow_html=True
-    )
-    
     st.sidebar.markdown(
         f"<b>Bem-vindo</b><br>{st.session_state.nome_usuario}", 
         unsafe_allow_html=True
