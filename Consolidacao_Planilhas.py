@@ -10,7 +10,7 @@ planilhas = [
              'Backlog.xlsx','Backlog_2.xlsx','Backlog_3.xlsx','Backlog_4.xlsx','Backlog_5.xlsx','Backlog_6.xlsx','Backlog_7.xlsx','Backlog_8.xlsx','Backlog_9.xlsx','Backlog_10.xlsx',
              'Backlog_11.xlsx','Backlog_12.xlsx','Backlog_13.xlsx','Backlog_14.xlsx','Backlog_15.xlsx','Backlog_16.xlsx','Backlog_17.xlsx','Backlog_18.xlsx','Backlog_19.xlsx','Backlog_20.xlsx',
              'Backlog_21.xlsx','Backlog_22.xlsx','Backlog_23.xlsx','Backlog_24.xlsx','Backlog_25.xlsx','Backlog_26.xlsx','Backlog_27.xlsx','Backlog_28.xlsx','Backlog_29.xlsx','Backlog_30.xlsx',
-             'Backlog_31.xlsx', 'Backlog_32.xlsx', 'Backlog_33.xlsx', 'Backlog_34.xlsx','Backlog_35.xlsx', 'Backlog_36.xlsx', 'Backlog_37.xlsx'
+             'Backlog_31.xlsx', 'Backlog_32.xlsx', 'Backlog_33.xlsx', 'Backlog_34.xlsx','Backlog_35.xlsx', 'Backlog_36.xlsx', 'Backlog_37.xlsx', 'Backlog_38.xlsx'
         ]
 
 # DataFrames para armazenar os dados consolidados das abas SPN e ITI
@@ -40,6 +40,10 @@ for planilha in planilhas:
         df_spn = pd.read_excel(caminho_completo, sheet_name='SPN')
         print(f'Colunas na aba SPN do arquivo {planilha}:', df_spn.columns)
         df_spn.columns = df_spn.columns.str.strip()
+        
+        # Remove colunas vazias (Unnamed)
+        df_spn = df_spn.loc[:, ~df_spn.columns.str.contains('^Unnamed')]
+        
         if 'Responsavel' not in df_spn.columns:
             print("A coluna 'Responsavel' não foi encontrada na aba SPN.")
             continue
@@ -51,7 +55,10 @@ for planilha in planilhas:
                 if df_spn_consolidado.empty or novo_incidente['Incidente'] not in df_spn_consolidado['Incidente'].values:
                     df_spn_consolidado = pd.concat([df_spn_consolidado, pd.DataFrame([novo_incidente])], ignore_index=True)
                 else:
-                    df_spn_consolidado.loc[df_spn_consolidado['Incidente'] == novo_incidente['Incidente'], 'Status'] = novo_incidente['Status']
+                    # Substitui toda a linha com os dados mais recentes
+                    idx = df_spn_consolidado[df_spn_consolidado['Incidente'] == novo_incidente['Incidente']].index[0]
+                    for col in df_spn_consolidado.columns:
+                        df_spn_consolidado.at[idx, col] = novo_incidente[col]
             
             # Marcar como resolvido os incidentes que sumiram nesta semana
             incidentes_atuais = set(df_spn['Incidente'])
@@ -68,6 +75,10 @@ for planilha in planilhas:
         df_iti = pd.read_excel(caminho_completo, sheet_name='ITI')
         print(f'Colunas na aba ITI do arquivo {planilha}:', df_iti.columns)
         df_iti.columns = df_iti.columns.str.strip()
+        
+        # Remove colunas vazias (Unnamed)
+        df_iti = df_iti.loc[:, ~df_iti.columns.str.contains('^Unnamed')]
+        
         if 'Responsavel' not in df_iti.columns:
             print("A coluna 'Responsavel' não foi encontrada na aba ITI.")
             continue
@@ -79,7 +90,10 @@ for planilha in planilhas:
                 if df_iti_consolidado.empty or novo_incidente['Incidente'] not in df_iti_consolidado['Incidente'].values:
                     df_iti_consolidado = pd.concat([df_iti_consolidado, pd.DataFrame([novo_incidente])], ignore_index=True)
                 else:
-                    df_iti_consolidado.loc[df_iti_consolidado['Incidente'] == novo_incidente['Incidente'], 'Status'] = novo_incidente['Status']
+                    # Substitui toda a linha com os dados mais recentes
+                    idx = df_iti_consolidado[df_iti_consolidado['Incidente'] == novo_incidente['Incidente']].index[0]
+                    for col in df_iti_consolidado.columns:
+                        df_iti_consolidado.at[idx, col] = novo_incidente[col]
             incidentes_atuais = set(df_iti['Incidente'])
             incidentes_consolidados = set(df_iti_consolidado['Incidente'])
             incidentes_sumiram = incidentes_consolidados - incidentes_atuais
