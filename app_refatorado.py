@@ -742,30 +742,115 @@ def renderizar_tela_login() -> None:
 
 def renderizar_cabecalho() -> None:
     """Renderiza o cabeçalho da aplicação."""
+    # Seção de usuário com estilo melhorado
     st.sidebar.markdown(
-        f"<b>Bem-vindo</b><br>{st.session_state.nome_usuario}", 
+        f"""
+        <div style='background-color: #f0f2f6; padding: 12px; border-radius: 8px; margin-bottom: 15px;'>
+            <div style='display: flex; align-items: center;'>
+                <div style='background-color: #2E86AB; color: white; border-radius: 50%; width: 36px; height: 36px; 
+                    display: flex; align-items: center; justify-content: center; margin-right: 10px; font-size: 16px;'>
+                    {st.session_state.nome_usuario[0].upper()}
+                </div>
+                <div>
+                    <div style='font-weight: 600; color: #2c3e50;'>Bem-vindo</div>
+                    <div style='font-size: 14px; color: #6c757d;'>{st.session_state.nome_usuario}</div>
+                </div>
+            </div>
+        </div>
+        """, 
         unsafe_allow_html=True
     )
 
-    if st.sidebar.button("Logout"):
+    # Botão de logout com estilo melhorado
+    if st.sidebar.button("📤 Logout", use_container_width=True):
         st.session_state.login = False
         st.success("Logout realizado com sucesso!")
         st.rerun()
     
-    # Adicionar informações de governança de TI
-    st.sidebar.markdown("---")
+    # Separador para a seção de filtros - AGORA PRIMEIRO
+    st.sidebar.markdown("""
+        <div style='margin: 20px 0 10px 0;'>
+            <div style='font-size: 12px; font-weight: 600; color: #6c757d; text-transform: uppercase; letter-spacing: 1px;'>
+                FILTROS
+            </div>
+            <hr style='margin: 5px 0 15px 0; border: none; height: 1px; background-color: #e9ecef;'>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # Renderizar o filtro de setores logo após o título FILTROS
+    usuario_nome = st.session_state.nome_usuario
+    setores_permitidos = obter_setores_permitidos(usuario_nome)
+    
+    # Inicializar df_consolidado se não existir
+    if 'df_consolidado' not in st.session_state:
+        # Carregar dados para garantir que temos setores disponíveis
+        df_consolidado = carregar_dados()
+        st.session_state.df_consolidado = df_consolidado
+    else:
+        df_consolidado = st.session_state.df_consolidado
+    
+    # Filtrar setores disponíveis
+    setores_disponiveis = [
+        s for s in df_consolidado['Setor'].unique() 
+        if s in setores_permitidos
+    ]
+    
+    # Renderizar o filtro de setores aqui, antes das informações do sistema
+    st.sidebar.multiselect(
+        "Setores", 
+        setores_disponiveis, 
+        default=setores_disponiveis, 
+        key="filtro_dashboard_setor"
+    )
+    
+    # Separador com título da seção - AGORA DEPOIS DOS FILTROS
+    st.sidebar.markdown("""
+        <div style='margin: 20px 0 10px 0;'>
+            <div style='font-size: 12px; font-weight: 600; color: #6c757d; text-transform: uppercase; letter-spacing: 1px;'>
+                INFORMAÇÕES DO SISTEMA
+            </div>
+            <hr style='margin: 5px 0 15px 0; border: none; height: 1px; background-color: #e9ecef;'>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # Informações de governança de TI com estilo melhorado
     st.sidebar.markdown(
         """
-        <div style='margin-top: 20px; padding: 10px; background-color: #f8f9fa; border-radius: 8px; border-left: 4px solid #2E86AB;'>
-            <h4 style='color: #2c3e50; margin: 0 0 8px 0; font-size: 14px;'>📊 Dashboard de Backlog TI</h4>
-            <p style='color: #6c757d; margin: 0; font-size: 12px; line-height: 1.4;'>
+        <div style='padding: 12px; background-color: #f8f9fa; border-radius: 8px; border-left: 4px solid #2E86AB; margin-bottom: 15px;'>
+            <h4 style='color: #2c3e50; margin: 0 0 8px 0; font-size: 15px; display: flex; align-items: center;'>
+                <span style='margin-right: 8px;'>📊</span> Dashboard de Backlog TI
+            </h4>
+            <p style='color: #6c757d; margin: 0 0 10px 0; font-size: 13px; line-height: 1.4;'>
                 Sistema de análise e monitoramento do backlog de tickets dos setores ITI e SPN.
             </p>
-            <br>
-            <p style='color: #6c757d; margin: 0; font-size: 11px;'>
-                <strong>Desenvolvido por:</strong> Governança de TI<br>
-                <strong>Finalidade:</strong> Gestão e controle do backlog
+            <div style='background-color: rgba(46, 134, 171, 0.1); padding: 8px; border-radius: 4px;'>
+                <p style='color: #6c757d; margin: 0; font-size: 12px;'>
+                    <strong>Desenvolvido por:</strong> Governança de TI<br>
+                    <strong>Finalidade:</strong> Gestão e controle do backlog
+                </p>
+            </div>
+        </div>
+        """, 
+        unsafe_allow_html=True
+    )
+    
+    # Explicação sobre o conceito de backlog com estilo melhorado
+    st.sidebar.markdown(
+        """
+        <div style='padding: 12px; background-color: #f8f9fa; border-radius: 8px; border-left: 4px solid #F18F01; margin-bottom: 15px;'>
+            <h4 style='color: #2c3e50; margin: 0 0 8px 0; font-size: 15px; display: flex; align-items: center;'>
+                <span style='margin-right: 8px;'>💡</span> O que é Backlog?
+            </h4>
+            <p style='color: #6c757d; margin: 0 0 10px 0; font-size: 13px; line-height: 1.5;'>
+                Backlog representa os tickets que não foram atendidos dentro do SLA (Service Level Agreement) estabelecido. 
+                São chamados que ultrapassaram o tempo acordado para resolução e precisam de atenção prioritária.
             </p>
+            <div style='background-color: rgba(241, 143, 1, 0.1); padding: 8px; border-radius: 4px;'>
+                <p style='color: #6c757d; margin: 0; font-size: 12px;'>
+                    <strong>Importância:</strong> Monitorar o backlog permite identificar gargalos operacionais, 
+                    redistribuir recursos e priorizar chamados críticos para reduzir o tempo de espera dos usuários.
+                </p>
+            </div>
         </div>
         """, 
         unsafe_allow_html=True
@@ -844,6 +929,9 @@ def renderizar_dashboard(df_consolidado: pd.DataFrame) -> None:
     Args:
         df_consolidado: DataFrame consolidado
     """
+    # Salvar o DataFrame consolidado no session_state para uso no cabeçalho
+    st.session_state.df_consolidado = df_consolidado
+    
     # Obter setores permitidos para o usuário
     usuario_nome = st.session_state.nome_usuario
     setores_permitidos = obter_setores_permitidos(usuario_nome)
@@ -852,14 +940,9 @@ def renderizar_dashboard(df_consolidado: pd.DataFrame) -> None:
         if s in setores_permitidos
     ]
 
-    # Filtros do Dashboard
-    st.sidebar.header("Filtros")
-    setores_selecionados = st.sidebar.multiselect(
-        "Setores", 
-        setores_disponiveis, 
-        default=setores_disponiveis, 
-        key="filtro_dashboard_setor"
-    )
+    # Os filtros agora são renderizados no cabeçalho
+    # Usamos o valor do multiselect que já foi definido no cabeçalho
+    setores_selecionados = st.session_state.get("filtro_dashboard_setor", setores_disponiveis)
 
     # Título dinâmico
     titulo = gerar_titulo_dinamico("Visão Geral do Backlog", setores_selecionados)
