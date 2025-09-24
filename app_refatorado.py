@@ -783,9 +783,15 @@ def renderizar_cabecalho() -> None:
     
     # Inicializar df_consolidado se não existir
     if 'df_consolidado' not in st.session_state:
-        # Carregar dados para garantir que temos setores disponíveis
-        df_consolidado = carregar_dados()
-        st.session_state.df_consolidado = df_consolidado
+        try:
+            # Carregar dados para garantir que temos setores disponíveis
+            df_consolidado = carregar_dados()
+            st.session_state.df_consolidado = df_consolidado
+        except Exception as e:
+            # Em caso de erro, criar um DataFrame vazio com a coluna 'Setor'
+            df_consolidado = pd.DataFrame({'Setor': ['SPN', 'ITI']})
+            st.session_state.df_consolidado = df_consolidado
+            st.warning(f"Não foi possível carregar os dados. Usando setores padrão.")
     else:
         df_consolidado = st.session_state.df_consolidado
     
