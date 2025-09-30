@@ -5,120 +5,106 @@ import re
 # Diretório onde as planilhas estão localizadas
 diretorio = r'C:\Users\franciscoj\Python_Initial\Pyhton_Web\Base'
 
-# Lista com os nomes das planilhas
-planilhas = [ 
-             'Backlog.xlsx','Backlog_2.xlsx','Backlog_3.xlsx','Backlog_4.xlsx','Backlog_5.xlsx','Backlog_6.xlsx','Backlog_7.xlsx','Backlog_8.xlsx','Backlog_9.xlsx','Backlog_10.xlsx',
-             'Backlog_11.xlsx','Backlog_12.xlsx','Backlog_13.xlsx','Backlog_14.xlsx','Backlog_15.xlsx','Backlog_16.xlsx','Backlog_17.xlsx','Backlog_18.xlsx','Backlog_19.xlsx','Backlog_20.xlsx',
-             'Backlog_21.xlsx','Backlog_22.xlsx','Backlog_23.xlsx','Backlog_24.xlsx','Backlog_25.xlsx','Backlog_26.xlsx','Backlog_27.xlsx','Backlog_28.xlsx','Backlog_29.xlsx','Backlog_30.xlsx',
-             'Backlog_31.xlsx', 'Backlog_32.xlsx', 'Backlog_33.xlsx', 'Backlog_34.xlsx','Backlog_35.xlsx', 'Backlog_36.xlsx', 'Backlog_37.xlsx', 'Backlog_38.xlsx'
-        ]
+# Lista dinâmica das planilhas
+planilhas = [f'Backlog_{i}.xlsx' for i in range(1, 40)]
+planilhas.insert(0, 'Backlog.xlsx')  # adiciona o Backlog.xlsx principal
 
-# DataFrames para armazenar os dados consolidados das abas SPN e ITI
-df_spn_consolidado = pd.DataFrame(columns=['Setor', 'Responsavel', 'Ano', 'Semana', 'Inicio_Semana', 'Final_Semana', 'Incidente', 'Backlog', 'Data', 'Status', 'Coordenador'])
-df_iti_consolidado = pd.DataFrame(columns=['Setor', 'Responsavel', 'Ano', 'Semana', 'Inicio_Semana', 'Final_Semana', 'Incidente', 'Backlog', 'Data', 'Status', 'Coordenador'])
+# Colunas padrão
+colunas_padrao = [
+    'Setor', 'Responsavel', 'Ano', 'Semana',
+    'Inicio_Semana', 'Final_Semana', 'Incidente',
+    'Backlog', 'Data', 'Status', 'Coordenador'
+]
 
-# Função para formatar as colunas de data conforme solicitado
+# DataFrames consolidados
+df_spn_consolidado = pd.DataFrame(columns=colunas_padrao)
+df_iti_consolidado = pd.DataFrame(columns=colunas_padrao)
+
+# Função para formatar datas
 def formatar_datas(df):
-    df['Inicio_Semana'] = pd.to_datetime(df['Inicio_Semana'], dayfirst=True, errors='coerce').dt.strftime('%d/%m/%Y')
-    df['Final_Semana'] = pd.to_datetime(df['Final_Semana'], dayfirst=True, errors='coerce').dt.strftime('%d/%m/%Y')
-    df['Backlog'] = pd.to_datetime(df['Backlog'], dayfirst=True, errors='coerce').dt.strftime('%m/%Y')
-    df['Data'] = pd.to_datetime(df['Data'], dayfirst=True, errors='coerce').dt.strftime('%d/%m/%Y')
+    for col, fmt in {
+        'Inicio_Semana': '%d/%m/%Y',
+        'Final_Semana': '%d/%m/%Y',
+        'Data': '%d/%m/%Y'
+    }.items():
+        if col in df.columns:
+            df[col] = pd.to_datetime(df[col], dayfirst=True, errors='coerce').dt.strftime(fmt)
     return df
 
-# Função para limpar espaços extras e caracteres invisíveis em colunas do tipo object
+# Função para limpar colunas de strings
 def limpar_colunas(df):
     for coluna in df.select_dtypes(include=['object']).columns:
-        df[coluna] = df[coluna].str.strip()  # Remove espaços extras no início e no final
-        df[coluna] = df[coluna].apply(lambda x: re.sub(r'[\n\t\r\x0b\x0c]', '', x) if isinstance(x, str) else x)  # Remove caracteres invisíveis
+        df[coluna] = (
+            df[coluna].astype(str)
+            .str.strip()
+            .replace({r'[\n\t\r\x0b\x0c]': ''}, regex=True)
+        )
     return df
 
+# Função para consolidar dados de uma aba
+def consolidar_aba(df_origem, df_destino):
+    if 'Incidente' not in df_origem.columns:
+        return df_destino
+
+    for _, novo in df_origem.iterrows():
+        if df_destino.empty or novo['Incidente'] not in df_destino['Incidente'].values:
+            df_destino = pd.concat([df_destino, pd.DataFrame([novo])], ignore_index=True)
+        else:
+            idx = df_destino[df_destino['Incidente'] == novo['Incidente']].index[0]
+            for col in df_destino.columns:
+                if col in novo:
+                    df_destino.at[idx, col] = novo[col]
+
+    # Atualiza status para 'Resolvido' se sumiu da planilha atual
+    incidentes_atuais = set(df_origem['Incidente'])
+    incidentes_consolidados = set(df_destino['Incidente'])
+    incidentes_sumiram = incidentes_consolidados - incidentes_atuais
+    df_destino.loc[df_destino['Incidente'].isin(incidentes_sumiram), 'Status'] = 'Resolvido'
+
+    return df_destino
+
+# Processa cada planilha
 for planilha in planilhas:
-    caminho_completo = os.path.join(diretorio, planilha)
+    caminho = os.path.join(diretorio, planilha)
     
-    # Ler e consolidar a aba SPN
-    try:
-        df_spn = pd.read_excel(caminho_completo, sheet_name='SPN')
-        print(f'Colunas na aba SPN do arquivo {planilha}:', df_spn.columns)
-        df_spn.columns = df_spn.columns.str.strip()
-        
-        # Remove colunas vazias (Unnamed)
-        df_spn = df_spn.loc[:, ~df_spn.columns.str.contains('^Unnamed')]
-        
-        if 'Responsavel' not in df_spn.columns:
-            print("A coluna 'Responsavel' não foi encontrada na aba SPN.")
-            continue
-        df_spn = formatar_datas(df_spn)
-        df_spn = limpar_colunas(df_spn)
-        
-        if 'Incidente' in df_spn.columns:
-            for _, novo_incidente in df_spn.iterrows():
-                if df_spn_consolidado.empty or novo_incidente['Incidente'] not in df_spn_consolidado['Incidente'].values:
-                    df_spn_consolidado = pd.concat([df_spn_consolidado, pd.DataFrame([novo_incidente])], ignore_index=True)
-                else:
-                    # Substitui toda a linha com os dados mais recentes
-                    idx = df_spn_consolidado[df_spn_consolidado['Incidente'] == novo_incidente['Incidente']].index[0]
-                    for col in df_spn_consolidado.columns:
-                        df_spn_consolidado.at[idx, col] = novo_incidente[col]
+    for aba, df_destino in [('SPN', df_spn_consolidado), ('ITI', df_iti_consolidado)]:
+        try:
+            df = pd.read_excel(caminho, sheet_name=aba)
+            df.columns = df.columns.str.strip()
+            df = df.loc[:, ~df.columns.str.contains('^Unnamed')]  # Remove colunas vazias
+            df = formatar_datas(df)
+            df = limpar_colunas(df)
             
-            # Marcar como resolvido os incidentes que sumiram nesta semana
-            incidentes_atuais = set(df_spn['Incidente'])
-            incidentes_consolidados = set(df_spn_consolidado['Incidente'])
-            incidentes_sumiram = incidentes_consolidados - incidentes_atuais
-            df_spn_consolidado.loc[df_spn_consolidado['Incidente'].isin(incidentes_sumiram), 'Status'] = 'Resolvido'
-        else:
-            print(f"A coluna 'Incidente' não está presente na aba SPN do arquivo {planilha}.")
-    except Exception as e:
-        print(f"Erro ao processar a aba SPN do arquivo {planilha}: {e}")
+            if 'Responsavel' not in df.columns:
+                print(f"Aba {aba} no arquivo {planilha} não contém 'Responsavel'. Pulando...")
+                continue
 
-    # Ler e consolidar a aba ITI
-    try:
-        df_iti = pd.read_excel(caminho_completo, sheet_name='ITI')
-        print(f'Colunas na aba ITI do arquivo {planilha}:', df_iti.columns)
-        df_iti.columns = df_iti.columns.str.strip()
-        
-        # Remove colunas vazias (Unnamed)
-        df_iti = df_iti.loc[:, ~df_iti.columns.str.contains('^Unnamed')]
-        
-        if 'Responsavel' not in df_iti.columns:
-            print("A coluna 'Responsavel' não foi encontrada na aba ITI.")
-            continue
-        df_iti = formatar_datas(df_iti)
-        df_iti = limpar_colunas(df_iti)
-        
-        if 'Incidente' in df_iti.columns:
-            for _, novo_incidente in df_iti.iterrows():
-                if df_iti_consolidado.empty or novo_incidente['Incidente'] not in df_iti_consolidado['Incidente'].values:
-                    df_iti_consolidado = pd.concat([df_iti_consolidado, pd.DataFrame([novo_incidente])], ignore_index=True)
-                else:
-                    # Substitui toda a linha com os dados mais recentes
-                    idx = df_iti_consolidado[df_iti_consolidado['Incidente'] == novo_incidente['Incidente']].index[0]
-                    for col in df_iti_consolidado.columns:
-                        df_iti_consolidado.at[idx, col] = novo_incidente[col]
-            incidentes_atuais = set(df_iti['Incidente'])
-            incidentes_consolidados = set(df_iti_consolidado['Incidente'])
-            incidentes_sumiram = incidentes_consolidados - incidentes_atuais
-            df_iti_consolidado.loc[df_iti_consolidado['Incidente'].isin(incidentes_sumiram), 'Status'] = 'Resolvido'
-        else:
-            print(f"A coluna 'Incidente' não está presente na aba ITI do arquivo {planilha}.")
-    except Exception as e:
-        print(f"Erro ao processar a aba ITI do arquivo {planilha}: {e}")
+            df_destino = consolidar_aba(df, df_destino)
 
-# Reordenar as colunas para garantir que estão no mesmo formato em ambas as planilhas
-df_spn_consolidado = df_spn_consolidado[[
-    'Setor', 'Responsavel', 'Ano', 'Semana', 'Inicio_Semana', 'Final_Semana','Incidente', 'Backlog', 'Data', 'Status', 'Coordenador'
-     ]]
+            if aba == 'SPN':
+                df_spn_consolidado = df_destino
+            else:
+                df_iti_consolidado = df_destino
 
-df_iti_consolidado = df_iti_consolidado[[
-    'Setor', 'Responsavel', 'Ano', 'Semana', 'Inicio_Semana', 'Final_Semana','Incidente', 'Backlog', 'Data', 'Status', 'Coordenador'
-     ]]
+        except Exception as e:
+            print(f"Erro ao processar aba {aba} do arquivo {planilha}: {e}")
 
-# Salvar os DataFrames consolidados em uma nova planilha, com abas separadas para SPN e ITI
-output_path = r'C:\Users\franciscoj\Python_Initial\Pyhton_Web\Base\consolidado.xlsx'
-with pd.ExcelWriter(output_path) as writer:
+# Garantir colunas padronizadas
+df_spn_consolidado = df_spn_consolidado.reindex(columns=colunas_padrao)
+df_iti_consolidado = df_iti_consolidado.reindex(columns=colunas_padrao)
+
+# Resetar índices
+df_spn_consolidado.reset_index(drop=True, inplace=True)
+df_iti_consolidado.reset_index(drop=True, inplace=True)
+
+# Salvar Excel consolidado
+output_path = os.path.join(diretorio, 'consolidado.xlsx')
+with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
     df_spn_consolidado.to_excel(writer, sheet_name='SPN', index=False)
     df_iti_consolidado.to_excel(writer, sheet_name='ITI', index=False)
 
-# Exibir as colunas disponíveis após a consolidação
-print("Colunas disponíveis na tabela SPN:", df_spn_consolidado.columns.tolist())
-print("Colunas disponíveis na tabela ITI:", df_iti_consolidado.columns.tolist())
-print("Consolidação concluída com sucesso.")
+# Confirmação
+if os.path.exists(output_path):
+    print(f"Arquivo consolidado gerado com sucesso em: {output_path}")
+else:
+    print("Falha ao gerar o arquivo consolidado.")
