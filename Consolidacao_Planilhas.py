@@ -7,7 +7,9 @@ diretorio = r'C:\Users\franciscoj\Python_Initial\Pyhton_Web\Base'
 
 # Lista dinâmica das planilhas
 planilhas = [f'Backlog_{i}.xlsx' for i in range(1, 40)]
-planilhas.insert(0, 'Backlog.xlsx')  # adiciona o Backlog.xlsx principal
+# Inclui Backlog.xlsx se existir
+if os.path.exists(os.path.join(diretorio, 'Backlog.xlsx')):
+    planilhas.insert(0, 'Backlog.xlsx')
 
 # Colunas padrão
 colunas_padrao = [
@@ -48,7 +50,8 @@ def consolidar_aba(df_origem, df_destino):
 
     for _, novo in df_origem.iterrows():
         if df_destino.empty or novo['Incidente'] not in df_destino['Incidente'].values:
-            df_destino = pd.concat([df_destino, pd.DataFrame([novo])], ignore_index=True)
+            novo_df = pd.DataFrame([novo]).dropna(axis=1, how='all')
+            df_destino = pd.concat([df_destino, novo_df], ignore_index=True)
         else:
             idx = df_destino[df_destino['Incidente'] == novo['Incidente']].index[0]
             for col in df_destino.columns:
@@ -71,7 +74,7 @@ for planilha in planilhas:
         try:
             df = pd.read_excel(caminho, sheet_name=aba)
             df.columns = df.columns.str.strip()
-            df = df.loc[:, ~df.columns.str.contains('^Unnamed')]  # Remove colunas vazias
+            df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
             df = formatar_datas(df)
             df = limpar_colunas(df)
             
@@ -105,6 +108,6 @@ with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
 
 # Confirmação
 if os.path.exists(output_path):
-    print(f"Arquivo consolidado gerado com sucesso em: {output_path}")
+    print(f"✅ Arquivo consolidado gerado com sucesso em: {output_path}")
 else:
-    print("Falha ao gerar o arquivo consolidado.")
+    print("❌ Falha ao gerar o arquivo consolidado.")
