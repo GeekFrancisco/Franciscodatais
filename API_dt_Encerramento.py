@@ -6,8 +6,8 @@ import base64
 # -----------------------------
 # Configurações
 # -----------------------------
-API_KEY = 'ORINiDJqG-g0resN9EER'  # Sua chave API Freshservice
-DOMAIN = 'duasrodas'              # Subdomínio Freshservice
+API_KEY = 'ORINiDJqG-g0resN9EER'  
+DOMAIN = 'duasrodas'              
 
 # Suprime warnings de SSL (não recomendado em produção)
 warnings.filterwarnings("ignore", message="Unverified HTTPS request")
