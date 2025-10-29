@@ -6,7 +6,7 @@ import re
 diretorio = r'C:\Users\franciscoj\Python_Initial\Pyhton_Web\Base'
 
 # Lista dinâmica das planilhas
-planilhas = [f'Backlog_{i}.xlsx' for i in range(1, 43)]
+planilhas = [f'Backlog_{i}.xlsx' for i in range(1, 44)]
 # Inclui Backlog.xlsx se existir
 if os.path.exists(os.path.join(diretorio, 'Backlog.xlsx')):
     planilhas.insert(0, 'Backlog.xlsx')
