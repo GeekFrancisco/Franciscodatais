@@ -163,14 +163,23 @@ def gerar_titulo_dinamico(titulo_base: str, setores_selecionados: List[str]) -> 
     Returns:
         Título formatado com HTML
     """
-    if setores_selecionados == ["SPN"]:
-        return f"{titulo_base} - <span style='color: {COLORS['primary']};'>SPN</span>"
-    elif setores_selecionados == ["ITI"]:
-        return f"{titulo_base} - <span style='color: {COLORS['secondary']};'>ITI</span>"
-    elif set(setores_selecionados) == {"SPN", "ITI"}:
-        return f"{titulo_base} - <span style='color: {COLORS['success']};'>Consolidado</span>"
-    else:
+    # Normalizar seleção: remover duplicados, espaços e manter maiúsculas
+    setores_norm = [str(s).strip().upper() for s in setores_selecionados if s]
+    setores_unicos = list(dict.fromkeys(setores_norm))  # preserva ordem
+    setores_set = set(setores_unicos)
+
+    if len(setores_set) == 0:
         return titulo_base
+    if len(setores_set) == 1:
+        unico = setores_unicos[0]
+        if unico == "SPN":
+            return f"{titulo_base} - <span style='color: {COLORS['primary']};'>SPN</span>"
+        if unico == "ITI":
+            return f"{titulo_base} - <span style='color: {COLORS['secondary']};'>ITI</span>"
+        # Qualquer outro valor único
+        return f"{titulo_base} - <span style='color: {COLORS['neutral']};'>{unico}</span>"
+    # Dois ou mais filtros selecionados: título Consolidado
+    return f"{titulo_base} - <span style='color: {COLORS['success']};'>Consolidado</span>"
 
 # ==================== FUNÇÕES DE GRÁFICOS ====================
 
@@ -478,8 +487,13 @@ def criar_grafico_desempenho(df_filtrado: pd.DataFrame) -> go.Figure:
         )
         
         df_responsavel_grouped['Total'] = df_responsavel_grouped.sum(axis=1)
+        resolvidos_series = (
+            df_responsavel_grouped['Resolvido']
+            if 'Resolvido' in df_responsavel_grouped.columns
+            else pd.Series(0, index=df_responsavel_grouped.index)
+        )
         df_responsavel_grouped['Percentual_Resolvidos'] = (
-            df_responsavel_grouped.get('Resolvido', 0) / df_responsavel_grouped['Total']
+            resolvidos_series / df_responsavel_grouped['Total']
         ) * 100
         
         df_responsavel_grouped = df_responsavel_grouped.reset_index()
@@ -495,11 +509,21 @@ def criar_grafico_desempenho(df_filtrado: pd.DataFrame) -> go.Figure:
         
         # Agrupar "Outros"
         if not df_responsavel_menor_igual5.empty:
+            resolvido_sum = (
+                int(df_responsavel_menor_igual5['Resolvido'].sum())
+                if 'Resolvido' in df_responsavel_menor_igual5.columns
+                else 0
+            )
+            pendente_sum = (
+                int(df_responsavel_menor_igual5['Pendente'].sum())
+                if 'Pendente' in df_responsavel_menor_igual5.columns
+                else 0
+            )
             outros = {
                 'Responsavel': 'Outros',
-                'Resolvido': df_responsavel_menor_igual5.get('Resolvido', 0).sum(),
-                'Pendente': df_responsavel_menor_igual5.get('Pendente', 0).sum(),
-                'Total': df_responsavel_menor_igual5['Total'].sum(),
+                'Resolvido': resolvido_sum,
+                'Pendente': pendente_sum,
+                'Total': int(df_responsavel_menor_igual5['Total'].sum()),
             }
             
             if outros['Total'] > 0:
@@ -521,16 +545,21 @@ def criar_grafico_desempenho(df_filtrado: pd.DataFrame) -> go.Figure:
         ]
         
         for name, column, color in traces:
+            serie_vals = (
+                df_responsavel_maior5[column]
+                if column in df_responsavel_maior5.columns
+                else pd.Series(0, index=df_responsavel_maior5.index)
+            )
             fig.add_trace(go.Bar(
                 x=df_responsavel_maior5['Responsavel'],
-                y=df_responsavel_maior5.get(column, 0),
+                y=serie_vals,
                 name=name,
                 marker=dict(
                     color=color,
                     line=dict(color='white', width=2),
                     pattern_fillmode='overlay'
                 ),
-                text=df_responsavel_maior5.get(column, 0),
+                text=serie_vals,
                 textposition='inside',
                 textfont=dict(size=12, color='white', family='Arial Black'),
                 hovertemplate=f'<b>{name}</b><br>' +
