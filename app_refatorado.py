@@ -28,6 +28,8 @@ APP_CONFIG = {
     'icon': 'data/base/IMG/Designer.jpeg',
     'data_file': 'data/base/consolidado.xlsx'
 }
+TOP_N_RESPONSAVEIS = 8
+MOV_AVG_WINDOW = 3
 
 # Cores para gráficos (esquema claro)
 COLORS = {
@@ -294,7 +296,7 @@ def criar_grafico_backlog_status(df_filtrado: pd.DataFrame) -> Optional[go.Figur
         )
         
         backlog_por_status = backlog_por_status.sort_values(by='Backlog')
-        backlog_por_status['Backlog_str'] = backlog_por_status['Backlog'].dt.strftime('%B/%Y')
+        backlog_por_status['Backlog_str'] = backlog_por_status['Backlog'].dt.strftime('%b/%Y')
         
         # Criar gráfico de linha moderno
         fig = go.Figure()
@@ -302,7 +304,7 @@ def criar_grafico_backlog_status(df_filtrado: pd.DataFrame) -> Optional[go.Figur
         # Adicionar linha para Resolvidos
         if 'Resolvido' in backlog_por_status.columns:
             fig.add_trace(go.Scatter(
-                x=backlog_por_status['Backlog_str'],
+                x=backlog_por_status['Backlog'],
                 y=backlog_por_status['Resolvido'],
                 mode='lines+markers+text',
                 name='Resolvidos',
@@ -320,7 +322,7 @@ def criar_grafico_backlog_status(df_filtrado: pd.DataFrame) -> Optional[go.Figur
         # Adicionar linha para Pendentes
         if 'Pendente' in backlog_por_status.columns:
             fig.add_trace(go.Scatter(
-                x=backlog_por_status['Backlog_str'],
+                x=backlog_por_status['Backlog'],
                 y=backlog_por_status['Pendente'],
                 mode='lines+markers+text',
                 name='Pendentes',
@@ -355,10 +357,19 @@ def criar_grafico_backlog_status(df_filtrado: pd.DataFrame) -> Optional[go.Figur
                 height=500
             )
             
-            # Configurações adicionais separadas
+            # Eixo temporal com seletor de período (sem mini-gráfico duplicado)
             fig.update_xaxes(
-                categoryorder='array', 
-                categoryarray=backlog_por_status['Backlog_str']
+                type='date',
+                tickformat='%b/%Y',
+                rangeselector=dict(
+                    buttons=list([
+                        dict(count=3, label='3m', step='month', stepmode='backward'),
+                        dict(count=6, label='6m', step='month', stepmode='backward'),
+                        dict(count=1, label='1y', step='year', stepmode='backward'),
+                        dict(step='all', label='Tudo')
+                    ])
+                ),
+                rangeslider=dict(visible=False)
             )
             
         except Exception as layout_error:
@@ -396,17 +407,16 @@ def criar_grafico_pizza_responsaveis(df_filtrado: pd.DataFrame) -> Optional[go.F
             .size()
         )
         
-        # Agrupar responsáveis com poucos incidentes
-        df_status_maior5 = df_status[df_status > 5]
-        outros_count = df_status[df_status <= 5].sum()
-        
-        if outros_count > 0:
+        # Top N (8) estrito e agrupamento "Outros"
+        top_n_series = df_status.nlargest(TOP_N_RESPONSAVEIS).astype(int)
+        restante_sum = int(df_status.sum() - int(top_n_series.sum()))
+        if restante_sum > 0:
             df_status_pizza = pd.concat([
-                df_status_maior5, 
-                pd.Series([outros_count], index=['Outros'])
+                top_n_series,
+                pd.Series([restante_sum], index=['Outros'])
             ])
         else:
-            df_status_pizza = df_status_maior5
+            df_status_pizza = top_n_series
         
         if df_status_pizza.empty:
             return None
@@ -439,10 +449,14 @@ def criar_grafico_pizza_responsaveis(df_filtrado: pd.DataFrame) -> Optional[go.F
         
         # Configurar layout simplificado para compatibilidade com Streamlit Cloud
         try:
-            fig.update_layout(
-                title='Distribuição por Responsáveis',
-                height=500
-            )
+            # Título dinâmico por setor, quando houver apenas um setor
+            titulo = 'Distribuição por Responsáveis'
+            if 'Setor' in df_filtrado.columns:
+                setores_unicos = df_filtrado['Setor'].dropna().unique()
+                if len(setores_unicos) == 1:
+                    titulo = f"{titulo} — {setores_unicos[0]}"
+
+            fig.update_layout(title=titulo, height=500)
             
             # Adicionar anotação central separadamente
             fig.add_annotation(
@@ -454,10 +468,7 @@ def criar_grafico_pizza_responsaveis(df_filtrado: pd.DataFrame) -> Optional[go.F
             
         except Exception as layout_error:
             # Fallback para layout básico
-            fig.update_layout(
-                title='Distribuição por Responsáveis',
-                height=500
-            )
+            fig.update_layout(title='Distribuição por Responsáveis', height=500)
         
         return fig
         
@@ -501,46 +512,29 @@ def criar_grafico_desempenho(df_filtrado: pd.DataFrame) -> go.Figure:
         ) * 100
         
         df_responsavel_grouped = df_responsavel_grouped.reset_index()
-        
-        # Filtrar responsáveis com mais de 5 incidentes
-        df_responsavel_maior5 = df_responsavel_grouped[
-            df_responsavel_grouped['Total'] > 5
-        ].copy()
-        
-        df_responsavel_menor_igual5 = df_responsavel_grouped[
-            df_responsavel_grouped['Total'] <= 5
-        ].copy()
-        
-        # Agrupar "Outros"
-        if not df_responsavel_menor_igual5.empty:
-            resolvido_sum = (
-                int(df_responsavel_menor_igual5['Resolvido'].sum())
-                if 'Resolvido' in df_responsavel_menor_igual5.columns
-                else 0
-            )
-            pendente_sum = (
-                int(df_responsavel_menor_igual5['Pendente'].sum())
-                if 'Pendente' in df_responsavel_menor_igual5.columns
-                else 0
-            )
-            outros = {
-                'Responsavel': 'Outros',
-                'Resolvido': resolvido_sum,
-                'Pendente': pendente_sum,
-                'Total': int(df_responsavel_menor_igual5['Total'].sum()),
-            }
-            
-            if outros['Total'] > 0:
-                outros['Percentual_Resolvidos'] = (outros['Resolvido'] / outros['Total']) * 100
-            else:
-                outros['Percentual_Resolvidos'] = 0
-                
-            df_responsavel_maior5 = pd.concat([
-                df_responsavel_maior5, 
-                pd.DataFrame([outros])
+
+        # Agrupar responsáveis com Total <= 6 em "Outros" e ordenar do maior para o menor
+        limiar_outros = 6
+        df_main = df_responsavel_grouped[df_responsavel_grouped['Total'] > limiar_outros].copy()
+        df_small = df_responsavel_grouped[df_responsavel_grouped['Total'] <= limiar_outros].copy()
+        if not df_small.empty:
+            resolvido_sum = int(df_small.get('Resolvido', 0).sum()) if 'Resolvido' in df_small.columns else 0
+            pendente_sum = int(df_small.get('Pendente', 0).sum()) if 'Pendente' in df_small.columns else 0
+            total_sum = int(df_small['Total'].sum())
+            outros_pct = (resolvido_sum / total_sum * 100) if total_sum > 0 else 0
+            df_main = pd.concat([
+                df_main,
+                pd.DataFrame([{
+                    'Responsavel': 'Outros',
+                    'Resolvido': resolvido_sum,
+                    'Pendente': pendente_sum,
+                    'Total': total_sum,
+                    'Percentual_Resolvidos': outros_pct
+                }])
             ], ignore_index=True)
-        
-        df_responsavel_maior5 = df_responsavel_maior5.sort_values(by='Total', ascending=True)
+
+        # Selecionar Top 10 após ordenação (inclui "Outros" se estiver entre os 10 maiores)
+        df_responsavel_maior5 = df_main.sort_values(by='Total', ascending=False).head(10)
         
         # Adicionar barras com estilo moderno
         traces = [
@@ -555,8 +549,9 @@ def criar_grafico_desempenho(df_filtrado: pd.DataFrame) -> go.Figure:
                 else pd.Series(0, index=df_responsavel_maior5.index)
             )
             fig.add_trace(go.Bar(
-                x=df_responsavel_maior5['Responsavel'],
-                y=serie_vals,
+                orientation='h',
+                x=serie_vals,
+                y=df_responsavel_maior5['Responsavel'],
                 name=name,
                 marker=dict(
                     color=color,
@@ -564,33 +559,21 @@ def criar_grafico_desempenho(df_filtrado: pd.DataFrame) -> go.Figure:
                     pattern_fillmode='overlay'
                 ),
                 text=serie_vals,
-                textposition='inside',
-                textfont=dict(size=12, color='white', family='Arial Black'),
+                textposition='outside',
+                textfont=dict(size=12, color=COLORS['text'], family='Arial Black'),
+                cliponaxis=False,
                 hovertemplate=f'<b>{name}</b><br>' +
-                             'Responsável: %{x}<br>' +
-                             'Quantidade: %{y}<br>' +
+                             'Responsável: %{y}<br>' +
+                             'Quantidade: %{x}<br>' +
                              '<extra></extra>'
             ))
-        
-        # Adicionar linha de total como referência
-        fig.add_trace(go.Scatter(
-            x=df_responsavel_maior5['Responsavel'],
-            y=df_responsavel_maior5.get('Total', 0),
-            mode='lines+markers',
-            name='Total',
-            line=dict(color=COLORS['total'], width=3, dash='dash'),
-            marker=dict(size=8, color=COLORS['total'], symbol='diamond'),
-            hovertemplate='<b>Total</b><br>' +
-                         'Responsável: %{x}<br>' +
-                         'Total: %{y}<br>' +
-                         '<extra></extra>'
-        ))
-        
-        # Adicionar anotações de percentual com estilo melhorado
+
+        # Anotações de percentual com barras horizontais
         for i in range(len(df_responsavel_maior5)):
             fig.add_annotation(
-                x=df_responsavel_maior5['Responsavel'].iloc[i],
-                y=df_responsavel_maior5.get('Total', 0).iloc[i] + 2,
+                xref='paper', yref='y',
+                x=1.02,
+                y=df_responsavel_maior5['Responsavel'].iloc[i],
                 text=f"<b>{df_responsavel_maior5['Percentual_Resolvidos'].iloc[i]:.1f}%</b>",
                 showarrow=False,
                 font=dict(size=12, color=COLORS['text'], family='Arial Black'),
@@ -598,16 +581,33 @@ def criar_grafico_desempenho(df_filtrado: pd.DataFrame) -> go.Figure:
                 bordercolor=COLORS['text'],
                 borderwidth=1
             )
-        
+
         # Configurar layout simplificado para compatibilidade com Streamlit Cloud
         try:
+            # Título dinâmico com setor quando houver apenas um e indicação de Top 10
+            titulo = 'Desempenho Individual dos Responsáveis'
+            if 'Setor' in df_filtrado.columns:
+                setores_unicos = df_filtrado['Setor'].dropna().unique()
+                if len(setores_unicos) == 1:
+                    titulo = f"{titulo} — {setores_unicos[0]}"
+            # Acrescentar indicação de Top 10
+            titulo = f"{titulo} — Top 10"
+            # Altura dinâmica para suportar muitos itens (evita agrupamento em "Outros")
+            bar_height_px = 28
+            base_padding_px = 120
+            dynamic_height = max(500, bar_height_px * len(df_responsavel_maior5) + base_padding_px)
+
             fig.update_layout(
-                title='Desempenho Individual dos Responsáveis',
-                xaxis_title='Responsável',
-                yaxis_title='Quantidade de Registros',
-                barmode='group',
-                height=500
+                title=titulo,
+                xaxis_title='Quantidade de Registros',
+                yaxis_title='Responsável',
+                barmode='stack',
+                height=dynamic_height,
+                yaxis=dict(automargin=True),
+                margin=dict(r=120)
             )
+            # Inverter o eixo Y para mostrar do maior para o menor de cima para baixo
+            fig.update_yaxes(autorange='reversed')
             
         except Exception as layout_error:
             # Fallback para layout básico
@@ -701,6 +701,12 @@ def aplicar_estilos_css() -> None:
             box-shadow: 0 4px 12px rgba(0,0,0,0.05);
             border: 1px solid #e9ecef;
             background-color: #ffffff;
+        }
+        /* Container com rolagem para gráficos altos */
+        .chart-scroll {
+            max-height: 600px;
+            overflow-y: auto;
+            padding-right: 8px; /* espaço para barra de rolagem */
         }
         
         /* CSS da classe .login removido - card branco desnecessário eliminado */
@@ -834,13 +840,8 @@ def renderizar_cabecalho() -> None:
         if s in setores_permitidos
     ]
     
-    # Renderizar o filtro de setores aqui, antes das informações do sistema
-    st.sidebar.multiselect(
-        "Setores", 
-        setores_disponiveis, 
-        default=setores_disponiveis, 
-        key="filtro_dashboard_setor"
-    )
+    # Filtro de setores removido conforme solicitado: visão consolidada no Dashboard
+    # Controles rápidos já removidos
     
     # Separador com título da seção - AGORA DEPOIS DOS FILTROS
     st.sidebar.markdown("""
@@ -979,13 +980,18 @@ def renderizar_dashboard(df_consolidado: pd.DataFrame) -> None:
         if s in setores_permitidos
     ]
 
-    # Os filtros agora são renderizados no cabeçalho
-    # Usamos o valor do multiselect que já foi definido no cabeçalho
-    setores_selecionados = st.session_state.get("filtro_dashboard_setor", setores_disponiveis)
+    # Visão consolidada: considerar sempre todos os setores disponíveis
+    setores_selecionados = setores_disponiveis
 
     # Título dinâmico
     titulo = gerar_titulo_dinamico("Visão Geral do Backlog", setores_selecionados)
     st.markdown(f"<h1>{titulo}</h1>", unsafe_allow_html=True)
+    # Última atualização do arquivo consolidado
+    try:
+        mtime = os.path.getmtime(APP_CONFIG['data_file'])
+        st.caption(f"Atualizado em {datetime.fromtimestamp(mtime).strftime('%d/%m/%Y %H:%M')}")
+    except Exception:
+        pass
 
     # Aplicar filtros
     df_filtrado = df_consolidado[df_consolidado['Setor'].isin(setores_selecionados)]
@@ -1009,15 +1015,37 @@ def renderizar_dashboard(df_consolidado: pd.DataFrame) -> None:
             st.plotly_chart(fig_backlog, use_container_width=True)
     
     col3, col4 = st.columns(2)
-    
+
+    # Gráficos inferiores por setor: barras horizontais para ITI e SPN
     with col3:
-        fig_pizza = criar_grafico_pizza_responsaveis(df_filtrado)
-        if fig_pizza:
-            st.plotly_chart(fig_pizza, use_container_width=True)
-    
+        df_iti = df_filtrado[df_filtrado['Setor'] == 'ITI']
+        fig_desempenho_iti = criar_grafico_desempenho(df_iti)
+        st.markdown("<div class='chart-scroll'>", unsafe_allow_html=True)
+        st.plotly_chart(fig_desempenho_iti, use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
     with col4:
-        fig_desempenho = criar_grafico_desempenho(df_filtrado)
-        st.plotly_chart(fig_desempenho, use_container_width=True)
+        df_spn = df_filtrado[df_filtrado['Setor'] == 'SPN']
+        fig_desempenho_spn = criar_grafico_desempenho(df_spn)
+        st.markdown("<div class='chart-scroll'>", unsafe_allow_html=True)
+        st.plotly_chart(fig_desempenho_spn, use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+    # Exportar recorte atual
+    try:
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+            df_filtrado.to_excel(writer, index=False, sheet_name='Backlog')
+        buffer.seek(0)
+        st.download_button(
+            label='⬇️ Exportar recorte para Excel',
+            data=buffer,
+            file_name='Backlog_Detalhado.xlsx',
+            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+    except Exception:
+        # Silenciar aviso de exportação para evitar barra amarela
+        pass
 
 def renderizar_relatorios(df_consolidado: pd.DataFrame) -> None:
     """
