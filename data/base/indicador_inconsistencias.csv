@@ -1,0 +1,36 @@
+﻿ID,Nome,tipo,soma_meses,total_planilha,Aba
+1,Anderson ,<30 Dias,10,1,SPN
+2,Arthur ,<30 Dias,8,0,SPN
+3,Clanderson ,<30 Dias,10,1,SPN
+4,Daniela ,<30 Dias,10,1,SPN
+5,Denis ,<30 Dias,10,1,SPN
+6,Elisandra ,<30 Dias,10,1,SPN
+7,Everton ,<30 Dias,10,1,SPN
+8,Fabio ,<30 Dias,10,1,SPN
+9,Higor ,<30 Dias,8,0,SPN
+10,Ivonei ,<30 Dias,10,1,SPN
+11,Kleberson ,<30 Dias,9,0,SPN
+12,Luan ,<30 Dias,9,0,SPN
+13,Luana ,<30 Dias,10,1,SPN
+14,Mara ,<30 Dias,10,1,SPN
+15,Marcos ,<30 Dias,10,1,SPN
+16,Nadir ,<30 Dias,10,1,SPN
+17,Rosane ,<30 Dias,10,1,SPN
+18,Willian,<30 Dias,10,1,SPN
+Total,,<30 Dias,6,0,SPN
+1,Jacyr Popenda,<30 Dias,10,1,ITI
+2,Lourival Moizes,<30 Dias,10,1,ITI
+3,Felipe Nascimento,<30 Dias,6,0,ITI
+4,Emerson Pellis,<30 Dias,10,1,ITI
+5,Alana Neris,<30 Dias,9,1,ITI
+6,Edson Junior,<30 Dias,10,1,ITI
+7,Eduardo Silva,<30 Dias,10,1,ITI
+8,Maria Eduarda,<30 Dias,10,1,ITI
+9,Erick da Silva,<30 Dias,8,0,ITI
+10,Patrick Doyle,<30 Dias,10,1,ITI
+11,Jorgenaldo Reis,<30 Dias,7,0,ITI
+12,Guilherme Worel,<30 Dias,7,0,ITI
+13,Michel Pessoa,<30 Dias,9,0,ITI
+14,Jose Acevedo,<30 Dias,10,1,ITI
+15,Sostenes da Silva,<30 Dias,7,0,ITI
+Total,,<30 Dias,3,0,ITI

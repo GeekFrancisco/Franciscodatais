@@ -1,18 +1,20 @@
 import pandas as pd
 import os
 
-diretorio = r'C:\Users\franciscoj\Python_Initial\Pyhton_Web\Base'
+diretorio = r'C:\Users\franciscoj\Python_Initial\Pyhton_Web\data\base'
 planilhas = [ 
     'Backlog.xlsx','Backlog_2.xlsx','Backlog_3.xlsx','Backlog_4.xlsx','Backlog_5.xlsx','Backlog_6.xlsx','Backlog_7.xlsx','Backlog_8.xlsx','Backlog_9.xlsx','Backlog_10.xlsx',
-    'Backlog_11.xlsx','Backlog_12.xlsx','Backlog_13.xlsx','Backlog_14.xlsx','Backlog_15.xlsx','Backlog_16.xlsx','Backlog_17.xlsx','Backlog_18.xlsx','Backlog_19.xlsx','Backlog_20.xlsx',
-    'Backlog_21.xlsx','Backlog_22.xlsx','Backlog_23.xlsx','Backlog_24.xlsx','Backlog_25.xlsx','Backlog_26.xlsx','Backlog_27.xlsx','Backlog_28.xlsx','Backlog_29.xlsx','Backlog_30.xlsx'
+             'Backlog_11.xlsx','Backlog_12.xlsx','Backlog_13.xlsx','Backlog_14.xlsx','Backlog_15.xlsx','Backlog_16.xlsx','Backlog_17.xlsx','Backlog_18.xlsx','Backlog_19.xlsx','Backlog_20.xlsx',
+             'Backlog_21.xlsx','Backlog_22.xlsx','Backlog_23.xlsx','Backlog_24.xlsx','Backlog_25.xlsx','Backlog_26.xlsx','Backlog_27.xlsx','Backlog_28.xlsx','Backlog_29.xlsx','Backlog_30.xlsx',
+             'Backlog_31.xlsx','Backlog_32.xlsx','Backlog_33.xlsx','Backlog_34.xlsx','Backlog_35.xlsx','Backlog_36.xlsx','Backlog_37.xlsx','Backlog_38.xlsx','Backlog_39.xlsx','Backlog_40.xlsx',
+             'Backlog_41.xlsx','Backlog_42.xlsx','Backlog_43.xlsx','Backlog_44.xlsx','Backlog_45.xlsx','Backlog_46.xlsx','Backlog_47.xlsx','Backlog_48.xlsx','Backlog_49.xlsx','Backlog_50.xlsx',
 ]
 
 resultados = []
 
 for planilha in planilhas:
     caminho = os.path.join(diretorio, planilha)
-    for aba in ['SPN', 'ITI']:
+    for aba in ['ITI']:
         try:
             df = pd.read_excel(caminho, sheet_name=aba)
             if 'Incidente' in df.columns:
@@ -30,7 +32,7 @@ if resultados:
     # Criar coluna de mês para agrupamento (opcional)
     df_todos['Mes'] = ((df_todos['Semana'] - 1) // 4 + 1).astype(int)
 
-    for aba in ['SPN', 'ITI']:
+    for aba in ['ITI']:
         min_semanas = 5  # 5 semanas = ~35 dias
         df_aba = df_todos[(df_todos['Aba'] == aba) & (df_todos['Status'].str.lower() == 'pendente')].copy()
         df_aba = df_aba.sort_values(['Incidente', 'Ano', 'Semana'])

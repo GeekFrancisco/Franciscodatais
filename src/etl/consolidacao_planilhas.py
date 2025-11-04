@@ -3,7 +3,7 @@ import os
 import re
 
 # Diretório onde as planilhas estão localizadas
-diretorio = r'C:\Users\franciscoj\Python_Initial\Pyhton_Web\Base'
+diretorio = r'C:\Users\franciscoj\Python_Initial\Pyhton_Web\data\base'
 
 # Lista dinâmica das planilhas
 planilhas = [f'Backlog_{i}.xlsx' for i in range(1, 44)]

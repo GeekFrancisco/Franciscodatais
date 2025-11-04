@@ -18,11 +18,15 @@ from datetime import datetime
 # Carregar variáveis de ambiente
 load_dotenv()
 
+# Modo mínimo: exibe apenas o essencial (Dashboard)
+# Pode ser controlado via .env com MINIMAL_MODE=true/false
+MINIMAL_MODE = str(os.getenv("MINIMAL_MODE", "true")).lower() in ("true", "1", "yes", "y", "sim")
+
 # Configurações da aplicação
 APP_CONFIG = {
     'title': 'Dashboard de Backlog',
-    'icon': 'Base/IMG/Designer.jpeg',
-    'data_file': 'Base/consolidado.xlsx'
+    'icon': 'data/base/IMG/Designer.jpeg',
+    'data_file': 'data/base/consolidado.xlsx'
 }
 
 # Cores para gráficos (esquema claro)
@@ -1178,13 +1182,15 @@ def main() -> None:
         return
 
     # Renderizar abas
-    abas = st.tabs(["Dashboard", "Relatórios"])
-
-    with abas[0]:
+    if MINIMAL_MODE:
+        # Somente o que é usado: mostrar apenas o Dashboard
         renderizar_dashboard(df_consolidado)
-
-    with abas[1]:
-        renderizar_relatorios(df_consolidado)
+    else:
+        abas = st.tabs(["Dashboard", "Relatórios"])
+        with abas[0]:
+            renderizar_dashboard(df_consolidado)
+        with abas[1]:
+            renderizar_relatorios(df_consolidado)
 
 if __name__ == "__main__":
     main()
