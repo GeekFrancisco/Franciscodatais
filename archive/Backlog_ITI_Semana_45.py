@@ -3,13 +3,15 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages
+import os
 
-# Caminho para a planilha na pasta raiz do projeto
-file_path = 'Base\Backlog_43.xlsx'
+# Caminho para a planilha na pasta data/base (robusto ao local do script)
+base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data', 'base'))
+file_path = os.path.join(base_dir, 'Backlog_45.xlsx')
 
 # Tentar carregar a aba 'SPN' da planilha "Backlog.xlsx"
 try:
-    df = pd.read_excel(file_path, sheet_name='SPN')
+    df = pd.read_excel(file_path, sheet_name='ITI')
 except FileNotFoundError:
     print(f"Erro: O arquivo '{file_path}' não foi encontrado.")
     exit()
@@ -24,15 +26,18 @@ except Exception as e:
     print(f"Erro ao converter a coluna 'Backlog': {e}")
     exit()
 
-# Criar um PDF para salvar os gráficos
-pdf_path = "Graficos_Backlog_SPN_Semana_43_2025.pdf"
+# Criar um PDF para salvar os gráficos no diretório data/base/Relatorio
+diretorio_relatorio = os.path.join(base_dir, 'Relatorio')
+if not os.path.exists(diretorio_relatorio):
+    os.makedirs(diretorio_relatorio)
+pdf_path = os.path.join(diretorio_relatorio, "Graficos_Backlog_ITI_Semana_45_2025.pdf")
 pdf = PdfPages(pdf_path)
 
 # Configurar o layout da página com vários gráficos (ex: 2 linhas e 2 colunas)
 fig, axs = plt.subplots(2, 2, figsize=(12, 10))  # 2x2 grid de gráficos
 
 # Adicionar título global à página
-fig.suptitle('Análise Backlog SPN - Semana 27/10 a 31/10', fontsize=16)
+fig.suptitle('Análise Backlog ITI - Semana 10/11 a 14/11', fontsize=16)
 
 # Função auxiliar para adicionar rótulos de dados
 def add_labels_bars(ax):
