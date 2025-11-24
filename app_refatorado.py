@@ -5,12 +5,11 @@ Versão refatorada com melhor organização e performance
 
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 import os
 from dotenv import load_dotenv
 import io
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Optional
 from datetime import datetime
 
 # ==================== CONFIGURAÇÕES E CONSTANTES ====================
@@ -260,7 +259,7 @@ def criar_grafico_comparativo(df_filtrado: pd.DataFrame) -> go.Figure:
         # Aplicar rotação dos labels do eixo X separadamente
         fig.update_xaxes(tickangle=-45)
         
-    except Exception as e:
+    except Exception:
         # Fallback para layout básico em caso de erro
         fig.update_layout(
             title='Comparativo por Setor - Visão Geral',
@@ -372,7 +371,7 @@ def criar_grafico_backlog_status(df_filtrado: pd.DataFrame) -> Optional[go.Figur
                 rangeslider=dict(visible=False)
             )
             
-        except Exception as layout_error:
+        except Exception:
             # Fallback para layout básico
             fig.update_layout(
                 title='Evolução Temporal do Backlog',
@@ -466,7 +465,7 @@ def criar_grafico_pizza_responsaveis(df_filtrado: pd.DataFrame) -> Optional[go.F
                 showarrow=False
             )
             
-        except Exception as layout_error:
+        except Exception:
             # Fallback para layout básico
             fig.update_layout(title='Distribuição por Responsáveis', height=500)
         
@@ -492,132 +491,102 @@ def criar_grafico_desempenho(df_filtrado: pd.DataFrame) -> go.Figure:
         return fig
     
     try:
-        # Processar dados de responsáveis
-        df_responsavel_grouped = (
-            df_filtrado
+        df_proc = df_filtrado.copy()
+        df_proc = df_proc[df_proc['Status'].str.lower() == 'pendente']
+        if df_proc.empty:
+            return fig
+        
+        if 'Backlog' in df_proc.columns:
+            bl = pd.to_datetime(df_proc['Backlog'], format='%m/%Y', errors='coerce')
+            df_proc['__bl_ano__'] = bl.dt.year
+            df_proc['__bl_mes__'] = bl.dt.month
+            meses_pt = {1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril', 5: 'Maio', 6: 'Junho', 7: 'Julho', 8: 'Agosto', 9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'}
+            df_proc['MesLabel'] = df_proc['__bl_mes__'].map(meses_pt).fillna('') + ' ' + df_proc['__bl_ano__'].fillna(0).astype(int).astype(str)
+        else:
+            if 'Data' in df_proc.columns:
+                dt = pd.to_datetime(df_proc['Data'], dayfirst=True, errors='coerce')
+                meses_pt = {1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril', 5: 'Maio', 6: 'Junho', 7: 'Julho', 8: 'Agosto', 9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'}
+                df_proc['MesLabel'] = dt.dt.month.map(meses_pt).fillna('') + ' ' + dt.dt.year.fillna(0).astype(int).astype(str)
+            else:
+                df_proc['MesLabel'] = 'Atual'
+        df_pivot = (
+            df_proc
             .drop_duplicates(subset=['Responsavel', 'Incidente'])
-            .groupby(['Responsavel', 'Status'])
+            .groupby(['Responsavel', 'MesLabel'])
             .size()
             .unstack(fill_value=0)
         )
-        
-        df_responsavel_grouped['Total'] = df_responsavel_grouped.sum(axis=1)
-        resolvidos_series = (
-            df_responsavel_grouped['Resolvido']
-            if 'Resolvido' in df_responsavel_grouped.columns
-            else pd.Series(0, index=df_responsavel_grouped.index)
-        )
-        df_responsavel_grouped['Percentual_Resolvidos'] = (
-            resolvidos_series / df_responsavel_grouped['Total']
-        ) * 100
-        
-        df_responsavel_grouped = df_responsavel_grouped.reset_index()
-
-        # Agrupar responsáveis com Total <= 6 em "Outros" e ordenar do maior para o menor
-        limiar_outros = 6
-        df_main = df_responsavel_grouped[df_responsavel_grouped['Total'] > limiar_outros].copy()
-        df_small = df_responsavel_grouped[df_responsavel_grouped['Total'] <= limiar_outros].copy()
-        if not df_small.empty:
-            resolvido_sum = int(df_small.get('Resolvido', 0).sum()) if 'Resolvido' in df_small.columns else 0
-            pendente_sum = int(df_small.get('Pendente', 0).sum()) if 'Pendente' in df_small.columns else 0
-            total_sum = int(df_small['Total'].sum())
-            outros_pct = (resolvido_sum / total_sum * 100) if total_sum > 0 else 0
-            df_main = pd.concat([
-                df_main,
-                pd.DataFrame([{
-                    'Responsavel': 'Outros',
-                    'Resolvido': resolvido_sum,
-                    'Pendente': pendente_sum,
-                    'Total': total_sum,
-                    'Percentual_Resolvidos': outros_pct
-                }])
-            ], ignore_index=True)
-
-        # Selecionar Top 10 após ordenação (inclui "Outros" se estiver entre os 10 maiores)
-        df_responsavel_maior5 = df_main.sort_values(by='Total', ascending=False).head(10)
-        
-        # Adicionar barras com estilo moderno
-        traces = [
-            ('Pendentes', 'Pendente', COLORS['pending']),
-            ('Resolvidos', 'Resolvido', COLORS['resolved'])
-        ]
-        
-        for name, column, color in traces:
-            serie_vals = (
-                df_responsavel_maior5[column]
-                if column in df_responsavel_maior5.columns
-                else pd.Series(0, index=df_responsavel_maior5.index)
+        if df_pivot.empty:
+            return fig
+        df_pivot['__total__'] = df_pivot.sum(axis=1)
+        df_pivot = df_pivot.sort_values('__total__', ascending=False)
+        df_pivot = df_pivot.drop(columns=['__total__'])
+        if 'Backlog' in df_proc.columns:
+            ordem = (
+                df_proc[['MesLabel', 'Backlog']]
+                .drop_duplicates()
+                .sort_values('Backlog')
+                ['MesLabel']
+                .tolist()
             )
-            fig.add_trace(go.Bar(
-                orientation='h',
-                x=serie_vals,
-                y=df_responsavel_maior5['Responsavel'],
-                name=name,
-                marker=dict(
-                    color=color,
-                    line=dict(color='white', width=2),
-                    pattern_fillmode='overlay'
-                ),
-                text=serie_vals,
-                textposition='outside',
-                textfont=dict(size=12, color=COLORS['text'], family='Arial Black'),
-                cliponaxis=False,
-                hovertemplate=f'<b>{name}</b><br>' +
-                             'Responsável: %{y}<br>' +
-                             'Quantidade: %{x}<br>' +
-                             '<extra></extra>'
-            ))
-
-        # Anotações de percentual com barras horizontais
-        for i in range(len(df_responsavel_maior5)):
-            fig.add_annotation(
-                xref='paper', yref='y',
-                x=1.02,
-                y=df_responsavel_maior5['Responsavel'].iloc[i],
-                text=f"<b>{df_responsavel_maior5['Percentual_Resolvidos'].iloc[i]:.1f}%</b>",
-                showarrow=False,
-                font=dict(size=12, color=COLORS['text'], family='Arial Black'),
-                bgcolor='rgba(255,255,255,0.8)',
-                bordercolor=COLORS['text'],
-                borderwidth=1
+        else:
+            ordem = (
+                df_proc[['MesLabel']]
+                .drop_duplicates()['MesLabel']
+                .tolist()
             )
-
-        # Configurar layout simplificado para compatibilidade com Streamlit Cloud
+        # Construir paleta objetiva: mês atual (azul), mês passado (laranja), demais (cinzas)
+        current_label = ordem[-1] if len(ordem) >= 1 else None
+        previous_label = ordem[-2] if len(ordem) >= 2 else None
+        others_palette = ['#7F8C8D', '#95A5A6', '#BDC3C7', '#D5DBDB', '#E5E8E8']
+        color_map = {}
+        for i, lbl in enumerate(ordem):
+            if lbl == current_label:
+                color_map[lbl] = COLORS['pending']
+            elif lbl == previous_label:
+                color_map[lbl] = COLORS['success']
+            else:
+                color_map[lbl] = others_palette[i % len(others_palette)]
+        for i, label in enumerate(ordem):
+            if label in df_pivot.columns:
+                vals = df_pivot[label].astype(int)
+                texts = [str(v) if int(v) > 0 else '' for v in vals]
+                fig.add_trace(go.Bar(
+                    orientation='h',
+                    x=vals,
+                    y=df_pivot.index,
+                    name=label,
+                    marker=dict(color=color_map.get(label, COLORS['neutral']), line=dict(color='white', width=2)),
+                    text=texts,
+                    textposition='outside',
+                    textfont=dict(size=12, color=COLORS['text'], family='Arial Black'),
+                    cliponaxis=False,
+                    hovertemplate='<b>'+label+'</b><br>Responsável: %{y}<br>Quantidade: %{x}<br><extra></extra>'
+                ))
         try:
-            # Título dinâmico com setor quando houver apenas um e indicação de Top 10
-            titulo = 'Desempenho Individual dos Responsáveis'
-            if 'Setor' in df_filtrado.columns:
-                setores_unicos = df_filtrado['Setor'].dropna().unique()
+            titulo = 'Pendentes por Responsável — Backlog'
+            if 'Setor' in df_proc.columns:
+                setores_unicos = df_proc['Setor'].dropna().unique()
                 if len(setores_unicos) == 1:
                     titulo = f"{titulo} — {setores_unicos[0]}"
-            # Acrescentar indicação de Top 10
-            titulo = f"{titulo} — Top 10"
-            # Altura dinâmica para suportar muitos itens (evita agrupamento em "Outros")
-            bar_height_px = 28
-            base_padding_px = 120
-            dynamic_height = max(500, bar_height_px * len(df_responsavel_maior5) + base_padding_px)
-
+            bar_height_px = 26
+            base_padding_px = 100
+            dynamic_height = max(400, bar_height_px * len(df_pivot.index) + base_padding_px)
+            max_total = int(df_pivot.sum(axis=1).max()) if len(df_pivot.index) > 0 else 0
             fig.update_layout(
                 title=titulo,
-                xaxis_title='Quantidade de Registros',
+                xaxis_title='Quantidade de Pendentes',
                 yaxis_title='Responsável',
                 barmode='stack',
                 height=dynamic_height,
                 yaxis=dict(automargin=True),
                 margin=dict(r=120)
             )
-            # Inverter o eixo Y para mostrar do maior para o menor de cima para baixo
+            fig.update_xaxes(tickmode='linear', dtick=1, range=[0, max_total + 1])
             fig.update_yaxes(autorange='reversed')
-            
-        except Exception as layout_error:
-            # Fallback para layout básico
-            fig.update_layout(
-                title='Desempenho Individual dos Responsáveis',
-                height=500
-            )
-        
+        except Exception:
+            fig.update_layout(title='Pendentes por Responsável', height=500)
         return fig
-        
     except Exception as e:
         st.error(f"Erro ao criar gráfico de desempenho: {str(e)}")
         return fig
@@ -823,22 +792,17 @@ def renderizar_cabecalho() -> None:
     # Inicializar df_consolidado se não existir
     if 'df_consolidado' not in st.session_state:
         try:
-            # Carregar dados para garantir que temos setores disponíveis
-            df_consolidado = carregar_dados()
+            df_dados = carregar_dados(APP_CONFIG['data_file'])
+            df_consolidado = processar_dados_consolidados(df_dados)
             st.session_state.df_consolidado = df_consolidado
-        except Exception as e:
-            # Em caso de erro, criar um DataFrame vazio com a coluna 'Setor'
+        except Exception:
             df_consolidado = pd.DataFrame({'Setor': ['SPN', 'ITI']})
             st.session_state.df_consolidado = df_consolidado
-            st.warning(f"Não foi possível carregar os dados. Usando setores padrão.")
+            st.warning("Não foi possível carregar os dados. Usando setores padrão.")
     else:
         df_consolidado = st.session_state.df_consolidado
     
-    # Filtrar setores disponíveis
-    setores_disponiveis = [
-        s for s in df_consolidado['Setor'].unique() 
-        if s in setores_permitidos
-    ]
+    
     
     # Filtro de setores removido conforme solicitado: visão consolidada no Dashboard
     # Controles rápidos já removidos
@@ -1131,9 +1095,7 @@ def renderizar_relatorios(df_consolidado: pd.DataFrame) -> None:
     # Aplicar filtros
     df_relatorio = df_consolidado_relatorio[
         (df_consolidado_relatorio['Setor'].isin(setor_filtro)) &
-        (df_consolidado_relatorio['Status'].isin(
-            st.session_state.get("filtro_relatorio_status", [])
-        )) &
+        (df_consolidado_relatorio['Status'].isin(status_filtro)) &
         (df_consolidado_relatorio['Responsavel'].isin(responsaveis_filtrados))
     ].copy()
 
@@ -1266,178 +1228,3 @@ def processar_dados_graficos(df_filtrado: pd.DataFrame) -> Dict[str, pd.DataFram
         resultado['responsaveis'] = df_status
     
     return resultado
-
-# ==================== ESTILOS CSS APRIMORADOS ====================
-
-def aplicar_estilos_css() -> None:
-    """Aplica estilos CSS personalizados para um visual limpo e claro."""
-    st.markdown("""
-        <style>
-        /* Estilo geral da aplicação */
-        .main {
-            background-color: #fafafa;
-            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        /* Cabeçalho fixo */
-        .fixed-header {
-            position: fixed; 
-            top: 0; 
-            left: 0; 
-            right: 0; 
-            background: linear-gradient(90deg, #ffffff 0%, #f8f9fa 100%);
-            z-index: 1000; 
-            border-bottom: 2px solid #e9ecef; 
-            padding: 15px 20px; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        } 
-        
-        .fixed-header h1 {
-            margin: 0; 
-            font-size: 28px;
-            color: #2c3e50;
-            font-weight: 600;
-        } 
-        
-        .fixed-header h2 {
-            margin: 0; 
-            font-size: 18px; 
-            color: #6c757d;
-            font-weight: 400;
-        }
-        
-        /* Sidebar personalizada */
-        .css-1d391kg {
-            background-color: #ffffff;
-            border-right: 2px solid #e9ecef;
-        }
-        
-        /* Métricas - Removida duplicação dos estilos dos cards brancos */
-        
-        /* Tabelas */
-        .stDataFrame {
-            background-color: #ffffff;
-            border-radius: 8px;
-            border: 1px solid #e9ecef;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-        
-        .stDataFrame td, .stDataFrame th {
-            text-align: center !important;
-            vertical-align: middle !important;
-            padding: 12px 8px !important;
-            border-bottom: 1px solid #f1f3f4 !important;
-        }
-        
-        .stDataFrame th {
-            background-color: #f8f9fa !important;
-            font-weight: 600 !important;
-            color: #495057 !important;
-        }
-        
-        /* Botões */
-        .stButton > button {
-            background: linear-gradient(90deg, #007bff 0%, #0056b3 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 10px 20px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-        }
-        
-        .stButton > button:hover {
-            background: linear-gradient(90deg, #0056b3 0%, #004085 100%);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(0,123,255,0.3);
-        }
-        
-        /* Filtros */
-        .stMultiSelect > div > div {
-            background-color: #ffffff;
-            border: 2px solid #e9ecef;
-            border-radius: 8px;
-        }
-        
-        /* Títulos */
-        h1, h2, h3 {
-            color: #2c3e50;
-            font-weight: 600;
-        }
-        
-        /* Gráficos */
-        .js-plotly-plot {
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-            border: 1px solid #e9ecef;
-            background-color: #ffffff;
-        }
-        
-        /* Login */
-        .login {
-            max-width: 400px;
-            margin: 0 auto;
-            padding: 40px 20px;
-            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-            border-radius: 16px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
-            border: 1px solid #e9ecef;
-        }
-        
-        .login h1 {
-            text-align: center;
-            color: #2c3e50;
-            margin-bottom: 30px;
-            font-size: 32px;
-            font-weight: 700;
-        }
-        
-        /* Alertas */
-        .stAlert {
-            border-radius: 8px;
-            border: none;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        
-        /* Tabs */
-        .stTabs [data-baseweb="tab-list"] {
-            gap: 8px;
-            background-color: #f8f9fa;
-            border-radius: 8px;
-            padding: 4px;
-        }
-        
-        .stTabs [data-baseweb="tab"] {
-            background-color: transparent;
-            border-radius: 6px;
-            color: #6c757d;
-            font-weight: 500;
-        }
-        
-        .stTabs [aria-selected="true"] {
-            background-color: #ffffff !important;
-            color: #2c3e50 !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        /* Responsividade */
-        @media (max-width: 768px) {
-            .fixed-header {
-                flex-direction: column;
-                text-align: center;
-                padding: 10px;
-            }
-            
-            .fixed-header h1 {
-                font-size: 24px;
-            }
-            
-            .fixed-header h2 {
-                font-size: 16px;
-            }
-        }
-        </style>
-    """, unsafe_allow_html=True)
