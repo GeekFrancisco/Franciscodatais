@@ -3,7 +3,7 @@ import os
 
 diretorio = r'C:\Users\franciscoj\Python_Initial\Pyhton_Web\data\base'
 planilhas = [ 
-    'Backlog.xlsx','Backlog_2.xlsx','Backlog_3.xlsx','Backlog_4.xlsx','Backlog_5.xlsx','Backlog_6.xlsx','Backlog_7.xlsx','Backlog_8.xlsx','Backlog_9.xlsx','Backlog_10.xlsx',
+    'Backlog_1.xlsx','Backlog_2.xlsx','Backlog_3.xlsx','Backlog_4.xlsx','Backlog_5.xlsx','Backlog_6.xlsx','Backlog_7.xlsx','Backlog_8.xlsx','Backlog_9.xlsx','Backlog_10.xlsx',
              'Backlog_11.xlsx','Backlog_12.xlsx','Backlog_13.xlsx','Backlog_14.xlsx','Backlog_15.xlsx','Backlog_16.xlsx','Backlog_17.xlsx','Backlog_18.xlsx','Backlog_19.xlsx','Backlog_20.xlsx',
              'Backlog_21.xlsx','Backlog_22.xlsx','Backlog_23.xlsx','Backlog_24.xlsx','Backlog_25.xlsx','Backlog_26.xlsx','Backlog_27.xlsx','Backlog_28.xlsx','Backlog_29.xlsx','Backlog_30.xlsx',
              'Backlog_31.xlsx','Backlog_32.xlsx','Backlog_33.xlsx','Backlog_34.xlsx','Backlog_35.xlsx','Backlog_36.xlsx','Backlog_37.xlsx','Backlog_38.xlsx','Backlog_39.xlsx','Backlog_40.xlsx',
@@ -29,11 +29,15 @@ if resultados:
     # Garantir que as colunas de semana e ano são numéricas
     df_todos['Semana'] = pd.to_numeric(df_todos['Semana'], errors='coerce')
     df_todos['Ano'] = pd.to_numeric(df_todos['Ano'], errors='coerce')
+
+    # Remover linhas com valores inválidos (NaN) em Semana ou Ano
+    df_todos = df_todos.dropna(subset=['Semana', 'Ano'])
+
     # Criar coluna de mês para agrupamento (opcional)
     df_todos['Mes'] = ((df_todos['Semana'] - 1) // 4 + 1).astype(int)
 
     for aba in ['ITI']:
-        min_semanas = 5  # 5 semanas = ~35 dias
+        min_semanas = 4  # 4 semanas = ~28 dias (aproximação de 30 dias)
         df_aba = df_todos[(df_todos['Aba'] == aba) & (df_todos['Status'].str.lower() == 'pendente')].copy()
         df_aba = df_aba.sort_values(['Incidente', 'Ano', 'Semana'])
 
@@ -53,6 +57,6 @@ if resultados:
                 print(f"\nAno: {ano} - Mês: {mes}")
                 print(grupo[['Incidente', 'Responsavel', 'Semana', 'Status', 'Setor', 'Arquivo', 'Aba']].to_string(index=False))
         else:
-            print(f"\nNenhum incidente na aba {aba} ficou mais de 30 dias (5 semanas) pendente.")
+            print(f"\nNenhum incidente na aba {aba} ficou 4 semanas ou mais pendente.")
 else:
     print("Nenhum dado encontrado nas planilhas.")
