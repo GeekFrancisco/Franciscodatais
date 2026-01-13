@@ -537,21 +537,31 @@ async def processar_roteiro():
             except Exception as e:
                 print(f"Tentativa {attempt+1} falhou com erro: {e}")
             
-            await asyncio.sleep(2) # Espera antes de tentar de novo
+            await asyncio.sleep(5) # Espera 5s antes de tentar de novo (Reduz erro de conexão)
             
         # Fallback Final (Se depois de 3 tentativas não conseguir)
         if not word_timings:
             print("AVISO FINAL: Não foi possível obter tempos exatos. Usando estimativa matemática (Fallback).")
-            if os.path.exists(audio_path):
-                 audio_len = MP3(audio_path).info.length
-                 word_timings = estimate_word_timings(texto, audio_len)
+            
+            # Verifica se o arquivo de áudio existe e é válido (> 1KB)
+            if os.path.exists(audio_path) and os.path.getsize(audio_path) > 0:
+                try:
+                    audio_len = MP3(audio_path).info.length
+                    word_timings = estimate_word_timings(texto, audio_len)
+                except Exception as e:
+                    print(f"ERRO CRÍTICO: Arquivo de áudio corrompido ou inválido ({e}). Pulando vídeo.")
+                    continue
             else:
-                 print("ERRO CRÍTICO: Áudio nem sequer foi gerado.")
+                 print("ERRO CRÍTICO: Áudio não foi gerado ou está vazio. Pulando vídeo.")
                  continue # Pula este vídeo
         
         # Descobre duração do áudio
-        audio_meta = MP3(audio_path)
-        original_duration = audio_meta.info.length + 0.5
+        try:
+            audio_meta = MP3(audio_path)
+            original_duration = audio_meta.info.length + 0.5
+        except Exception as e:
+             print(f"ERRO CRÍTICO ao ler duração do áudio: {e}. Pulando.")
+             continue
         
         # Ajuste de Tempo: 3s silêncio inicial + áudio + 3s silêncio final
         duration = original_duration + CONFIG["PADDING_START"] + CONFIG["PADDING_END"]
@@ -785,9 +795,14 @@ async def processar_roteiro():
         final_output = final_video.with_audio(final_audio)
         
         # 6. Salvar Vídeo (Com Retry Logic para evitar BrokenPipeError)
-        # Sanitiza nome do arquivo
-        safe_title = titulo.replace("|", "").replace(":", "").replace("/", "").strip()
-        output_filename = f"{idioma}_{safe_title}_{index}.mp4".replace(" ", "_")
+        # Sanitiza nome do arquivo (Remove caracteres proibidos no Windows: < > : " / \ | ? *)
+        import re
+        safe_title = re.sub(r'[<>:"/\\|?*]', '', titulo).strip()
+        
+        # Extrai nome da imagem (sem extensão) para organização
+        safe_img_name = os.path.splitext(img_name)[0].strip()
+        
+        output_filename = f"{idioma}_{safe_img_name}_{safe_title}_{index}.mp4".replace(" ", "_")
         output_path = os.path.join(output_dir, output_filename)
         
         success = False
@@ -818,12 +833,14 @@ async def processar_roteiro():
             continue
 
         # 7. Salvar Thumbnail PRO (Estilo Nuvem)
-        thumb_filename = f"{idioma}_{safe_title}_{index}_thumb.jpg".replace(" ", "_")
+        thumb_filename = f"{idioma}_{safe_img_name}_{safe_title}_{index}_thumb.jpg".replace(" ", "_")
         thumb_path = os.path.join(output_dir, thumb_filename)
         
         print("🖼️ Gerando Thumbnail PRO (Nuvem Branca)...")
         # Usa a imagem original para criar uma capa limpa e chamativa
-        if create_pro_thumbnail(img_path, main_title, thumb_path, watermark=marca_dagua):
+        thumb_success = create_pro_thumbnail(img_path, main_title, thumb_path, watermark=marca_dagua)
+        
+        if thumb_success:
             print(f"✅ Thumbnail salva: {thumb_filename}")
         else:
             # Fallback para captura de frame se der erro
@@ -832,8 +849,41 @@ async def processar_roteiro():
                 img_thumb = Image.fromarray(frame).convert("RGB")
                 img_thumb.save(thumb_path, quality=95)
                 print(f"🖼️ Thumbnail (Fallback) salva: {thumb_filename}")
+                thumb_success = True
             except Exception as e:
                 print(f"Erro ao salvar thumbnail fallback: {e}")
+                thumb_success = False
+
+        # --- EMBUTIR THUMBNAIL NO VÍDEO (METADATA) ---
+        if thumb_success and os.path.exists(output_path) and os.path.exists(thumb_path):
+            try:
+                print("📎 Anexando Thumbnail ao arquivo de vídeo (Cover Art)...")
+                temp_output = output_path.replace(".mp4", "_temp.mp4")
+                
+                # Comando FFmpeg para adicionar stream de imagem como cover
+                # -map 0 (vídeo/audio original) -map 1 (imagem) -c copy (sem reencode)
+                # -disposition:v:1 attached_pic (define como capa)
+                cmd = [
+                    "ffmpeg", "-y", "-i", output_path, "-i", thumb_path,
+                    "-map", "0", "-map", "1",
+                    "-c", "copy", "-disposition:v:1", "attached_pic",
+                    temp_output
+                ]
+                
+                # Executa silenciosamente
+                import subprocess
+                result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                
+                if result.returncode == 0:
+                    # Substitui o original pelo novo
+                    os.replace(temp_output, output_path)
+                    print("✅ Thumbnail embutida no MP4 com sucesso!")
+                else:
+                    print("⚠️ Falha ao embutir thumbnail (FFmpeg retornou erro). Mantendo vídeo original.")
+                    if os.path.exists(temp_output): os.remove(temp_output)
+                    
+            except Exception as e:
+                print(f"Erro ao executar FFmpeg para thumbnail: {e}")
             
         # 8. Limpeza de Arquivos Temporários e Liberação de Memória
         try:
