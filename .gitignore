@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+
+# Project Specific - Temporary & Output
+temp_audios/
+logs/
+*.log
+
+# Secrets & Tokens (IMPORTANT)
+secrets/
+tokens/
+*.json
+
+# Excel temporary files
+~$*.xlsx
+
+# OS
+Thumbs.db
+Desktop.ini

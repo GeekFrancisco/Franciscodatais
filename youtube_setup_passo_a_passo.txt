@@ -1,0 +1,249 @@
+CONFIGURAÇÃO DA API DO YOUTUBE E PUBLICAÇÃO AUTOMÁTICA
+======================================================
+
+Objetivo:
+- Conectar o projeto "Automated Video Generator" a um canal do YouTube
+- Habilitar a YouTube Data API v3
+- Criar credenciais OAuth (Desktop)
+- Rodar o script de publicação automática usando a planilha Roteiro_Geral.xlsx
+
+IMPORTANTE:
+- Siga estes passos na ordem.
+- Use, de preferência, o canal "abandonado" para testes.
+
+------------------------------------------------------
+1. PREPARAR O CANAL DE TESTE NO YOUTUBE
+------------------------------------------------------
+
+1.1. Entre no YouTube com a conta do canal de teste.
+1.2. Verifique se o canal está ativo e consegue enviar vídeos manualmente.
+1.3. (Opcional, mas recomendado) Verifique a conta por telefone
+     para liberar limites maiores de upload.
+
+------------------------------------------------------
+2. CRIAR PROJETO NO GOOGLE CLOUD
+------------------------------------------------------
+
+2.1. Acesse:
+     https://console.cloud.google.com/
+
+2.2. Faça login com a MESMA conta Google do canal de teste.
+
+2.3. No topo, clique em:
+     "Selecionar projeto" -> "Novo projeto".
+
+2.4. Nome sugerido do projeto:
+     AutomatedVideoGenerator
+
+2.5. Clique em "Criar".
+
+2.6. Após criado, certifique-se de que esse projeto está selecionado
+     no topo do console do Google Cloud.
+
+------------------------------------------------------
+3. ATIVAR A YOUTUBE DATA API V3
+------------------------------------------------------
+
+3.1. No menu do lado esquerdo, vá em:
+     "APIs e serviços" -> "Biblioteca" (Library).
+
+3.2. Na busca, digite:
+     YouTube Data API v3
+
+3.3. Clique na API encontrada.
+
+3.4. Clique em:
+     "Ativar" (Enable).
+
+------------------------------------------------------
+4. CONFIGURAR A TELA DE CONSENTIMENTO OAUTH
+------------------------------------------------------
+
+4.1. Ainda em "APIs e serviços", vá em:
+     "Tela de consentimento OAuth".
+
+4.2. Tipo de usuário:
+     Selecione "Externo".
+
+4.3. Clique em "Criar" ou "Editar", e preencha:
+     - Nome do app: Automated Video Generator (ou similar)
+     - E-mail de suporte: seu e-mail
+     - Domínios autorizados: pode deixar em branco (aplicativo desktop)
+     - Informações de contato do desenvolvedor: seu e-mail
+
+4.4. Avance as etapas:
+     - Escopos: você pode manter como está; a tela de autorização
+       no navegador pedirá acesso ao YouTube quando o script rodar.
+     - Usuários de teste: se o app estiver em modo de teste, adicione
+       seu e-mail (a conta do canal).
+
+4.5. Salve no final.
+
+------------------------------------------------------
+5. CRIAR CREDENCIAIS OAUTH PARA APLICATIVO DESKTOP
+------------------------------------------------------
+
+5.1. Vá em:
+     "APIs e serviços" -> "Credenciais".
+
+5.2. Clique em:
+     "Criar credenciais" -> "ID do cliente OAuth".
+
+5.3. Em "Tipo de aplicativo", escolha:
+     "Aplicativo para computador" (Desktop app).
+
+5.4. Nome sugerido:
+     YoutubeDesktopUploader
+
+5.5. Clique em "Criar".
+
+5.6. Na tela seguinte, clique no ícone para BAIXAR o arquivo JSON.
+     Exemplo de nome: client_secret_<algo>.apps.googleusercontent.com.json
+
+------------------------------------------------------
+6. COLOCAR O JSON DE CREDENCIAIS NO PROJETO
+------------------------------------------------------
+
+6.1. No seu computador, localize o arquivo JSON baixado.
+
+6.2. Vá até a pasta do projeto:
+     c:\Users\franciscoj\Python_Initial\Automated_Video_Generator - Completo
+
+6.3. Crie a pasta "secrets" (se ainda não existir):
+     c:\Users\franciscoj\Python_Initial\Automated_Video_Generator - Completo\secrets
+
+6.4. Copie o arquivo JSON baixado para dentro da pasta "secrets".
+
+6.5. Renomeie o arquivo para:
+     client_secret_youtube.json
+
+Resultado esperado:
+     c:\Users\franciscoj\Python_Initial\Automated_Video_Generator - Completo\secrets\client_secret_youtube.json
+
+O script de publicação já está configurado para usar exatamente esse caminho.
+
+------------------------------------------------------
+7. INSTALAR DEPENDÊNCIAS PYTHON
+------------------------------------------------------
+
+7.1. Abra um terminal na pasta do projeto:
+     c:\Users\franciscoj\Python_Initial\Automated_Video_Generator - Completo
+
+7.2. Execute:
+     pip install -r requirements.txt
+
+Isso instalará, entre outros:
+     - google-api-python-client
+     - google-auth-httplib2
+     - google-auth-oauthlib
+
+------------------------------------------------------
+8. PREPARAR A PLANILHA PARA TESTE
+------------------------------------------------------
+
+8.1. Rode o script que garante as colunas de publicação:
+     python scripts/update_roteiro_shorts_columns.py
+
+8.2. Abra a planilha:
+     roteiros/Roteiro_Geral.xlsx
+
+8.3. Vá até a aba "Shorts".
+
+8.4. Escolha UMA linha para teste (um Short que já tenha vídeo gerado)
+     e configure:
+
+     - Plataforma: YT
+     - Publicar: SIM
+     - StatusPublicacao: PENDENTE (ou deixe como está se for novo)
+     - TituloShort: texto que será o título no YouTube
+     - DescricaoShort: texto da descrição
+     - Hashtags: ex.: #shorts #teste
+     - Privacidade: unlisted (recomendado para testes)
+     - PublicoInfantil: NAO
+     - CanalDestino: (opcional)
+         - Vazio ou outro valor: usa tokens/youtube_default.json
+         - ES: usa tokens/youtube_es.json
+         - EN: usa tokens/youtube_en.json
+
+8.5. Certifique-se de que o vídeo .mp4 correspondente já foi gerado
+     pelo shorts_generator e está em:
+
+     SHORTS/output_videos_finais
+
+     com nome no padrão:
+     {IDIOMA}_{ImagemSemExtensao}_{TituloOuTituloShortLimpado}.mp4
+
+------------------------------------------------------
+9. PRIMEIRA EXECUÇÃO DO SCRIPT DE PUBLICAÇÃO
+------------------------------------------------------
+
+9.1. No terminal do projeto, execute:
+     python scripts/publish_youtube_from_planilha.py
+
+9.2. O script fará:
+     - Leitura da planilha Roteiro_Geral.xlsx
+     - Verificação das colunas obrigatórias de publicação
+     - Validação das linhas marcadas com:
+         Plataforma = YT
+         Publicar = SIM
+         StatusPublicacao != PUBLICADO
+
+9.3. Caso falte coluna de publicação:
+     - Ele exibirá um erro indicando quais colunas faltam
+     - Rode novamente: python scripts/update_roteiro_shorts_columns.py
+
+9.4. Caso haja problema nos dados de publicação (título vazio, privacidade
+     inválida, PublicoInfantil com valor diferente de SIM/NAO):
+     - Ele listará os problemas por linha e encerrará
+     - Corrija na planilha e rode novamente o script de publicação
+
+9.5. Se estiver tudo certo, o script tentará se conectar ao YouTube.
+     Na primeira vez:
+     - Abrirá o navegador automaticamente
+     - Mostrará a tela de login/consentimento Google
+
+9.6. No navegador:
+     - Escolha a conta Google do canal de teste (canal abandonado)
+     - Leia as permissões solicitadas (upload de vídeos no YouTube)
+     - Clique em "Permitir" / "Allow"
+
+9.7. Após a autorização:
+     - O script salva o token de acesso em:
+         tokens/youtube_default.json (se CanalDestino vazio)
+         OU tokens/youtube_es.json / youtube_en.json, dependendo
+           do valor da coluna CanalDestino
+     - As próximas execuções usarão esse token, sem precisar
+       abrir o navegador novamente (até o token expirar).
+
+9.8. No terminal, você verá mensagens como:
+     - Linha X: enviando vídeo NOME.mp4 para o YouTube...
+     - Linha X: publicado com sucesso. URL: https://www.youtube.com/shorts/XXXXXXXXXXX
+     - Atualização da planilha após publicação concluída.
+
+------------------------------------------------------
+10. O QUE ACONTECE NA PLANILHA APÓS A PUBLICAÇÃO
+------------------------------------------------------
+
+Para cada linha publicada com sucesso:
+     - YouTubeVideoId: recebe o ID do vídeo no YouTube
+     - YouTubeURL: recebe a URL completa do Short
+     - StatusPublicacao: muda para PUBLICADO
+     - Publicar: muda para NAO
+
+Isso evita que o mesmo vídeo seja republicado nas próximas execuções.
+
+------------------------------------------------------
+11. DICAS PARA USAR O CANAL DE TESTE
+------------------------------------------------------
+
+11.1. Use PRIVACIDADE = unlisted nos primeiros testes.
+      Assim o vídeo não aparece no feed público, só para quem tiver o link.
+
+11.2. Depois que tudo estiver funcionando, você pode:
+      - Trocar o canal de conexão (usando outra conta Google)
+      - Ajustar a coluna CanalDestino para apontar para outros tokens
+        (ES, EN ou outro código que você decidir)
+
+11.3. Quando estiver seguro, mude PRIVACIDADE para public
+      e use o seu canal principal.
+
