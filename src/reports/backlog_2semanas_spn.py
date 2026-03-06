@@ -4,6 +4,7 @@ import os
 diretorio = r'C:\Users\franciscoj\Python_Initial\Pyhton_Web\data\base'
 planilhas = [ 
              'Backlog_1.xlsx','Backlog_2.xlsx','Backlog_3.xlsx','Backlog_4.xlsx',
+             'Backlog_5.xlsx','Backlog_6.xlsx','Backlog_7.xlsx','Backlog_8.xlsx',
             ]
 
 resultados = []
