@@ -285,7 +285,9 @@ def criar_grafico_backlog_status(df_filtrado: pd.DataFrame) -> Optional[go.Figur
     try:
         # Processar dados de backlog
         df_temp = df_filtrado.copy()
-        df_temp['Backlog'] = pd.to_datetime(df_temp['Backlog'], format='%m/%Y')
+        df_temp['Backlog'] = pd.to_datetime(df_temp['Backlog'], format='%m/%Y', errors='coerce')
+        df_temp = df_temp.dropna(subset=['Backlog'])
+        df_temp['Backlog'] = df_temp['Backlog'].dt.to_period('M').dt.to_timestamp()
         
         backlog_por_status = (
             df_temp.groupby(['Backlog', 'Status'])
@@ -315,7 +317,7 @@ def criar_grafico_backlog_status(df_filtrado: pd.DataFrame) -> Optional[go.Figur
                 textfont=dict(size=11, color=COLORS['resolved'], family='Arial Black'),
                 fill='tonexty',
                 fillcolor=f"rgba({int(COLORS['resolved'][1:3], 16)}, {int(COLORS['resolved'][3:5], 16)}, {int(COLORS['resolved'][5:7], 16)}, 0.1)",
-                hovertemplate='<b>Resolvidos</b><br>Período: %{x}<br>Quantidade: %{y}<extra></extra>'
+                hovertemplate='<b>Resolvidos</b><br>Período: %{x|%b/%Y}<br>Quantidade: %{y}<extra></extra>'
             ))
         
         # Adicionar linha para Pendentes
@@ -331,7 +333,7 @@ def criar_grafico_backlog_status(df_filtrado: pd.DataFrame) -> Optional[go.Figur
                 text=backlog_por_status['Pendente'],
                 textposition='bottom center',
                 textfont=dict(size=11, color=COLORS['pending'], family='Arial Black'),
-                hovertemplate='<b>Pendentes</b><br>Período: %{x}<br>Quantidade: %{y}<extra></extra>'
+                hovertemplate='<b>Pendentes</b><br>Período: %{x|%b/%Y}<br>Quantidade: %{y}<extra></extra>'
             ))
         
         # Adicionar linha de média se houver dados resolvidos
@@ -360,6 +362,9 @@ def criar_grafico_backlog_status(df_filtrado: pd.DataFrame) -> Optional[go.Figur
             fig.update_xaxes(
                 type='date',
                 tickformat='%b/%Y',
+                dtick='M1',
+                ticklabelmode='period',
+                tickangle=-45,
                 rangeselector=dict(
                     buttons=list([
                         dict(count=3, label='3m', step='month', stepmode='backward'),
@@ -995,21 +1000,6 @@ def renderizar_dashboard(df_consolidado: pd.DataFrame) -> None:
         st.plotly_chart(fig_desempenho_spn, use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
     
-    # Exportar recorte atual
-    try:
-        buffer = io.BytesIO()
-        with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-            df_filtrado.to_excel(writer, index=False, sheet_name='Backlog')
-        buffer.seek(0)
-        st.download_button(
-            label='⬇️ Exportar recorte para Excel',
-            data=buffer,
-            file_name='Backlog_Detalhado.xlsx',
-            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
-    except Exception:
-        # Silenciar aviso de exportação para evitar barra amarela
-        pass
 
 def renderizar_relatorios(df_consolidado: pd.DataFrame) -> None:
     """
