@@ -1,16 +1,29 @@
-"""
-Dashboard de Análise de Backlog
-Versão refatorada com melhor organização e performance
-"""
+import os
+import sys
+import subprocess
+import importlib.util
+from datetime import datetime
+from typing import Dict, List, Optional
+import io
+
+if __name__ == "__main__" and "streamlit" not in sys.modules:
+    if importlib.util.find_spec("streamlit") is None:
+        print(
+            "Este arquivo é um app Streamlit. Rode com:\n"
+            "  streamlit run app_refatorado.py\n"
+            "ou\n"
+            "  python -m streamlit run app_refatorado.py"
+        )
+        raise SystemExit(1)
+
+    raise SystemExit(
+        subprocess.run([sys.executable, "-m", "streamlit", "run", __file__]).returncode
+    )
 
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-import os
 from dotenv import load_dotenv
-import io
-from typing import Dict, List, Optional
-from datetime import datetime
 
 # ==================== CONFIGURAÇÕES E CONSTANTES ====================
 
@@ -500,6 +513,23 @@ def criar_grafico_desempenho(df_filtrado: pd.DataFrame) -> go.Figure:
         df_proc = df_proc[df_proc['Status'].str.lower() == 'pendente']
         if df_proc.empty:
             return fig
+
+        responsavel_raw = df_proc['Responsavel'].fillna('')
+        responsavel_clean = (
+            responsavel_raw
+            .astype(str)
+            .str.replace('\u200b', '', regex=False)
+            .str.replace('\ufeff', '', regex=False)
+            .str.replace('\u00a0', ' ', regex=False)
+            .str.replace('\u202f', ' ', regex=False)
+            .str.replace('\u2007', ' ', regex=False)
+            .str.replace(r'\s+', ' ', regex=True)
+            .str.strip()
+            .replace({'': '(Sem responsável)'})
+        )
+        responsavel_key = responsavel_clean.str.casefold()
+        responsavel_display = responsavel_clean.groupby(responsavel_key).agg(lambda s: s.value_counts().index[0])
+        df_proc['Responsavel'] = responsavel_key.map(responsavel_display)
         
         if 'Backlog' in df_proc.columns:
             bl = pd.to_datetime(df_proc['Backlog'], format='%m/%Y', errors='coerce')
@@ -526,11 +556,12 @@ def criar_grafico_desempenho(df_filtrado: pd.DataFrame) -> go.Figure:
         df_pivot['__total__'] = df_pivot.sum(axis=1)
         df_pivot = df_pivot.sort_values('__total__', ascending=False)
         df_pivot = df_pivot.drop(columns=['__total__'])
-        if 'Backlog' in df_proc.columns:
+        if 'Backlog' in df_proc.columns and '__bl_ano__' in df_proc.columns and '__bl_mes__' in df_proc.columns:
             ordem = (
-                df_proc[['MesLabel', 'Backlog']]
+                df_proc[['__bl_ano__', '__bl_mes__', 'MesLabel']]
+                .dropna(subset=['__bl_ano__', '__bl_mes__'])
                 .drop_duplicates()
-                .sort_values('Backlog')
+                .sort_values(['__bl_ano__', '__bl_mes__'])
                 ['MesLabel']
                 .tolist()
             )
@@ -540,6 +571,12 @@ def criar_grafico_desempenho(df_filtrado: pd.DataFrame) -> go.Figure:
                 .drop_duplicates()['MesLabel']
                 .tolist()
             )
+
+        ordem = [lbl for lbl in ordem if isinstance(lbl, str) and lbl.strip()]
+        ordem = list(dict.fromkeys(ordem))
+        if not ordem:
+            ordem = list(df_pivot.columns)
+
         # Construir paleta objetiva: mês atual (azul), mês passado (laranja), demais (cinzas)
         current_label = ordem[-1] if len(ordem) >= 1 else None
         previous_label = ordem[-2] if len(ordem) >= 2 else None
