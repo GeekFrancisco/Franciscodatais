@@ -7,11 +7,11 @@ import os
 
 # Caminho para a planilha na pasta data/base (robusto ao local do script)
 base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data', 'base'))
-file_path = os.path.join(base_dir, 'Backlog_11.xlsx')
+file_path = os.path.join(base_dir, 'Backlog_13.xlsx')
 
 # Tentar carregar a aba 'SPN' da planilha "Backlog.xlsx"
 try:
-    df = pd.read_excel(file_path, sheet_name='ITI')
+    df = pd.read_excel(file_path, sheet_name='SPN')
 except FileNotFoundError:
     print(f"Erro: O arquivo '{file_path}' não foi encontrado.")
     exit()
@@ -30,14 +30,14 @@ except Exception as e:
 diretorio_relatorio = os.path.join(base_dir, 'Relatorio')
 if not os.path.exists(diretorio_relatorio):
     os.makedirs(diretorio_relatorio)
-pdf_path = os.path.join(diretorio_relatorio, "Graficos_Backlog_ITI_Semana_11_2026.pdf")
+pdf_path = os.path.join(diretorio_relatorio, "Graficos_Backlog_SPN_Semana_13_2026.pdf")
 pdf = PdfPages(pdf_path)
 
 # Configurar o layout da página com vários gráficos (ex: 2 linhas e 2 colunas)
 fig, axs = plt.subplots(2, 2, figsize=(12, 10))  # 2x2 grid de gráficos
 
 # Adicionar título global à página
-fig.suptitle('Análise Backlog ITI - Semana 23/03 a 27/03', fontsize=16)
+fig.suptitle('Análise Backlog SPN - Semana 06/04 a 10/04', fontsize=16)
 
 # Função auxiliar para adicionar rótulos de dados
 def to_native(val):
