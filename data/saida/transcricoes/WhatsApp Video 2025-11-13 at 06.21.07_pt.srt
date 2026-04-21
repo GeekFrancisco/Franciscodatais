@@ -1,7 +1,0 @@
-1
-00:00:00,000 --> 00:00:08,500
-Bom dia, meu querido. Hoje vamos começar. Vamos dar conta do trabalho e garantir que tudo corra bem para todos.
-
-2
-00:00:08,500 --> 00:00:10,000
-Ok, muito obrigado.
