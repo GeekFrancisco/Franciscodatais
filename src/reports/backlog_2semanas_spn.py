@@ -8,7 +8,7 @@ planilhas = [
              'Backlog_9.xlsx','Backlog_10.xlsx','Backlog_11.xlsx','Backlog_12.xlsx',
              'Backlog_13.xlsx','Backlog_14.xlsx','Backlog_15.xlsx','Backlog_16.xlsx',
              'Backlog_17.xlsx', 'Backlog_18.xlsx','Backlog_19.xlsx','Backlog_20.xlsx',
-             'Backlog_21.xlsx', 'Backlog_22.xlsx','Backlog_23.xlsx','Backlog_24.xlsx'
+             'Backlog_21.xlsx', 'Backlog_22.xlsx','Backlog_23.xlsx','Backlog_24.xlsx','Backlog_25.xlsx'
 
             ]
 
