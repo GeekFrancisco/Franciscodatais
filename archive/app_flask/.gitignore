@@ -1,0 +1,54 @@
+# Arquivos e diretórios específicos do Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Ambientes virtuais
+venv/
+ENV/
+.env
+.venv
+
+# Arquivos de IDE e editores
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Arquivos de log
+*.log
+
+# Arquivos de banco de dados local
+*.db
+*.sqlite3
+
+# Arquivos de configuração local
+instance/
+.webassets-cache
+
+# Arquivos de cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Arquivos temporários
+.DS_Store
+Thumbs.db
