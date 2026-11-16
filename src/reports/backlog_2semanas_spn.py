@@ -10,7 +10,8 @@ planilhas = [
              'Backlog_17.xlsx', 'Backlog_18.xlsx','Backlog_19.xlsx','Backlog_20.xlsx',
              'Backlog_21.xlsx', 'Backlog_22.xlsx','Backlog_23.xlsx','Backlog_24.xlsx','Backlog_25.xlsx',
              'Backlog_26.xlsx', 'Backlog_27.xlsx','Backlog_28.xlsx','Backlog_29.xlsx','Backlog_30.xlsx',
-             'Backlog_31.xlsx', 'Backlog_32.xlsx','Backlog_33.xlsx','Backlog_34.xlsx','Backlog_35.xlsx','Backlog_36.xlsx'
+             'Backlog_31.xlsx', 'Backlog_32.xlsx','Backlog_33.xlsx','Backlog_34.xlsx','Backlog_35.xlsx','Backlog_36.xlsx',
+             'Backlog_37.xlsx', 'Backlog_38.xlsx','Backlog_39.xlsx','Backlog_40.xlsx','Backlog_41.xlsx','Backlog_42.xlsx','Backlog_43.xlsx','Backlog_44.xlsx'
             ]
 
 resultados = []
